@@ -1,0 +1,64 @@
+[package]
+name = "dovekie"
+version = "0.0.1"
+edition = "2021"
+authors = ["Jessica Stringham"]
+
+
+[profile.release]
+lto = true
+opt-level = 'z'
+
+[lib]
+crate-type = ["cdylib"]
+
+
+# default = ["schemars"]
+# schemars = [
+#   "murrelet_gpu/schemars",
+#   "murrelet_draw/schemars",
+#   "murrelet_livecode/schemars",
+#   "murrelet_perform/schemars",
+# ]
+
+[dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4.42"
+console_error_panic_hook = "0.1"
+
+schemars = "0.8.21"
+
+itertools = "0.10.5"
+rand = "0.8"
+
+serde = { version = "1.0.104", features = ["derive"] }
+serde_json = "1.0.48"
+
+murrelet = { version = "0.1.2" }
+murrelet_common = { version = "0.1.2" }
+murrelet_livecode = { version = "0.1.2" }
+murrelet_livecode_macros = { version = "0.1.2" }
+murrelet_livecode_derive = "0.1.2"
+murrelet_perform = { version = "0.1.2", features = ["for_the_web"] }
+murrelet_gui = { version = "0.1.2", features = ["glam"] }
+murrelet_gen = "0.1.2"
+lerpable = "0.0.2"
+
+anyhow = "1.0.86"
+
+nalgebra = "0.33.2"
+
+[dependencies.getrandom]
+version = "0.2"
+features = ["js"]
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",
+  # "Window",
+  # "Document",
+  # "Element",
+  # "HtmlCanvasElement",
+  # "CanvasRenderingContext2d",
+]

@@ -1,0 +1,1 @@
+cd rust && wasm-pack build --dev --target web && cp pkg/dovekie_bg.wasm pkg/dovekie_bg_opt.wasm

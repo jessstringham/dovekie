@@ -1,0 +1,35 @@
+{
+  "name": "dovekie",
+  "version": "0.0.1",
+  "description": "Javascript interface for Murrelet livecoding features",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/dovekie.js",
+      "types": "./dist/dovekie.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "pkg"
+  ],
+  "scripts": {
+    "package_rust": "sh package_rust.sh",
+    "build": "npm run clean && npm run package_rust && vite build",
+    "clean": "rm -rf dist rust/pkg",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jessstringham/dovekie"
+  },
+  "author": "Jessica Stringham",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^7.0.5",
+    "vite-plugin-top-level-await": "^1.4.1",
+    "vite-plugin-wasm": "^3.3.0"
+  },
+  "unpkg": "./dist/dovekie.js",
+  "jsdelivr": "./dist/dovekie.js"
+}
