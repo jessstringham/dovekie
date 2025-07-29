@@ -57,7 +57,7 @@ export class MurreletModel {
     }
 
     const convertedConf = convertToVec(drawingConf);
-    console.log(convertedConf);
+    // console.log(convertedConf);
 
     const conf = { app: defaultApp, drawing: { data: convertedConf } };
     let errMsg = await this.reload(conf);
@@ -196,6 +196,34 @@ export class MurreletModel {
   }
 
   params() {
-    return this.murrelet.conf();
+    const raw = JSON.parse(this.murrelet.conf()).data;
+
+    // recursively go through and parse back into the structure
+    // it'll either be a struct (list with {key, value}), a vec (a list), or a float.
+    function parseParams(data) {
+      if (Array.isArray(data)) {
+        if (data.length === 0) {
+          return [];
+        }
+        // if it's looking like a struct
+        if (typeof data[0] === "object") {
+          // assert this is true?
+          // data[0] !== null && "key" in data[0] && "value" in data[0]
+          let r = {};
+          for (let i = 0; i < data.length; i++) {
+            const d = data[i];
+            r[d.key] = parseParams(d.value);
+          }
+          return r;
+        } else {
+          // otherwise it's a regular list
+          return data.map(parseParams);
+        }
+      } else {
+        return data;
+      }
+    }
+
+    return parseParams(raw);
   }
 }
