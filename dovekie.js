@@ -33,7 +33,10 @@ export class MurreletModel {
     this.lastUpdate = performance.now();
 
     if (svg) {
+      console.log("adding event listeners to ", this.svg);
       this.addEventListeners();
+    } else {
+      console.log("undefined svg, not adding event listeners")
     }
   }
 

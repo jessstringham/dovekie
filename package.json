@@ -21,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jessstringham/dovekie"
+    "url": "git+https://github.com/jessstringham/dovekie.git"
   },
   "author": "Jessica Stringham",
   "license": "MIT",
