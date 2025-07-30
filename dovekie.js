@@ -32,7 +32,18 @@ export class MurreletModel {
     this.fps = 30; // initial, but we'll load this from the config
     this.lastUpdate = performance.now();
 
-    // this.addEventListeners();
+    if (svg) {
+      this.addEventListeners();
+    }
+  }
+
+  addEventListeners() {
+    this.svg.addEventListener("mousemove", () => this.mouseMove);
+    this.svg.addEventListener("click", () => this.mouseDown);
+    this.svg.addEventListener("mouseup", () => this.mouseUp);
+
+    window.addEventListener("resize", () => this.updateWindowSize);
+    document.addEventListener("DOMContentLoaded", () => this.updateWindowSize);
   }
 
   async init() {
