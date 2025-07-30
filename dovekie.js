@@ -157,8 +157,11 @@ export class MurreletModel {
   }
 
   mouseMove(event) {
+    console.log("move! svg is", this.svg);
+
     if (this.svg) {
       const rect = this.svg.getBoundingClientRect();
+      console.log("murrelet selecting a box!", rect);
 
       // Calculate the x and y coordinates relative to the container
       this.mouse_x = event.clientX - rect.left;
