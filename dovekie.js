@@ -15,6 +15,8 @@ export class MurreletModel {
     this.murrelet = null;
     this.svg = svg;
 
+    this.app_config = { ...defaultApp };
+
     // init some things about the mouse
     this.mouse_x = 0.0; // mouse x
     this.mouse_y = 0.0; // mouse y
@@ -36,17 +38,27 @@ export class MurreletModel {
       console.log("adding event listeners to ", this.svg);
       this.addEventListeners();
     } else {
-      console.log("undefined svg, not adding event listeners")
+      console.log("undefined svg, not adding event listeners");
+    }
+  }
+
+  set_bpm(bpm) {
+    if (!isNaN(Number(bpm))) {
+      this.app_config.time.bpm = Number(bpm);
+    } else {
     }
   }
 
   addEventListeners() {
-    this.svg.addEventListener("mousemove", () => this.mouseMove);
-    this.svg.addEventListener("click", () => this.mouseDown);
-    this.svg.addEventListener("mouseup", () => this.mouseUp);
+    console.log("svg", this.svg);
+    this.svg.addEventListener("mousemove", (event) => this.mouseMove(event));
+    this.svg.addEventListener("mousedown", (event) => this.mouseDown(event));
+    this.svg.addEventListener("mouseup", (event) => this.mouseUp(event));
 
-    window.addEventListener("resize", () => this.updateWindowSize);
-    document.addEventListener("DOMContentLoaded", () => this.updateWindowSize);
+    window.addEventListener("resize", () => this.updateWindowSize());
+    document.addEventListener("DOMContentLoaded", () =>
+      this.updateWindowSize()
+    );
   }
 
   async init() {
@@ -171,11 +183,8 @@ export class MurreletModel {
   }
 
   mouseMove(event) {
-    console.log("move! svg is", this.svg);
-
     if (this.svg) {
       const rect = this.svg.getBoundingClientRect();
-      console.log("murrelet selecting a box!", rect);
 
       // Calculate the x and y coordinates relative to the container
       this.mouse_x = event.clientX - rect.left;
@@ -184,11 +193,11 @@ export class MurreletModel {
   }
 
   mouseDown() {
-    this.mouseDown = true;
+    this.mouse_down = true;
   }
 
   mouseUp() {
-    this.mouseDown = false;
+    this.mouse_down = false;
   }
 
   state() {
