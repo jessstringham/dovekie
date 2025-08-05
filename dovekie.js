@@ -1,5 +1,7 @@
 import init, { new_model } from "./rust/pkg/dovekie.js";
 import wasmUrl from "./rust/pkg/dovekie_bg.wasm?url";
+import "./public/style/editor.css";
+import { MurreletGUI } from "./editor.js";
 
 const defaultApp = {
   time: {},
@@ -34,6 +36,8 @@ export class MurreletModel {
     this.fps = 30; // initial, but we'll load this from the config
     this.lastUpdate = performance.now();
 
+    this.init_conf = null;
+
     if (svg) {
       console.log("adding event listeners to ", this.svg);
       this.addEventListeners();
@@ -46,6 +50,18 @@ export class MurreletModel {
     if (!isNaN(Number(bpm))) {
       this.app_config.time.bpm = Number(bpm);
     } else {
+    }
+  }
+
+  // optionally set up a gui to update the drawing config
+  async setup_gui(gui_div, schema_hints) {
+    if (this.murrelet === null) {
+      console.error("setting up dovekie gui before initializing it!");
+    } else {
+      this.gui = new MurreletGUI(this, gui_div);
+      await this.gui.init(schema_hints);
+      this.gui.build_html(this.init_conf);
+      return this.gui;
     }
   }
 
@@ -95,6 +111,8 @@ export class MurreletModel {
       return false;
     } else {
       this.update();
+      this.init_conf = drawingConf;
+
       return true;
     }
   }

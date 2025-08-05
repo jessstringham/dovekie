@@ -13,6 +13,7 @@
     "dist",
     "pkg"
   ],
+  "style": "dist/style/editor.css",
   "scripts": {
     "package_rust": "sh package_rust.sh",
     "build": "npm run clean && npm run package_rust && vite build",

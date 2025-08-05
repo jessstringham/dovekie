@@ -41,7 +41,9 @@ murrelet_livecode_macros = { version = "0.1.2" }
 murrelet_livecode_derive = "0.1.2"
 murrelet_perform = { version = "0.1.2", features = ["for_the_web"] }
 murrelet_gui = { version = "0.1.2", features = ["glam"] }
+murrelet_schema = { version = "0.1.2", features = ["glam"] }
 murrelet_gen = "0.1.2"
+murrelet_draw = "0.1.2"
 lerpable = "0.0.2"
 
 anyhow = "1.0.86"

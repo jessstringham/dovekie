@@ -1,17 +1,14 @@
 use std::collections::HashMap;
 
-use murrelet_gen::MurreletGen;
+use murrelet_gui::CanChangeToGUI;
+use murrelet_schema::MurreletSchema;
 use serde::Serialize;
 
+use anyhow::Result;
 use lerpable::Lerpable;
 use murrelet::prelude::*;
-use murrelet_common::{clamp, StrId};
-use murrelet_gen::CanSampleFromDist;
-use murrelet_gui::CanMakeGUI;
-use murrelet_gui::MurreletGUI;
 use murrelet_livecode::types::LivecodeError;
 use murrelet_perform::asset_loader::AssetLoaders;
-use serde::Serializer;
 use serde_json;
 use wasm_bindgen::prelude::*;
 
@@ -59,30 +56,36 @@ pub enum CustomConf {
     Struct(CustomConfStruct),
     // Enum(CustomConfEnum), // choice
 }
+impl CustomConf {
+    fn to_schema(&self) -> MurreletSchema {
+        match &self {
+            CustomConf::F32(_) => MurreletSchema::Val(murrelet_schema::MurreletPrimitive::Num),
+            CustomConf::Vec(v) => {
+                let a = v.0.first().unwrap();
+                MurreletSchema::List(Box::new(a.to_schema()))
+            }
+            CustomConf::Struct(v) => MurreletSchema::Struct(
+                "struct".to_string(),
+                v.0.iter()
+                    .map(|kv| (kv.key.clone(), kv.value.to_schema()))
+                    .collect::<Vec<_>>(),
+            ),
+        }
+    }
 
-
-
+    fn to_schema_with_hints(&self, s: &HashMap<String, String>) -> Result<MurreletSchema> {
+        self.to_schema().update_with_hints(s)
+    }
+}
 
 #[derive(Debug, Clone, Livecode, Lerpable, Serialize)]
 pub struct DrawingConf {
     data: CustomConf,
 }
-
 impl DrawingConf {
-    // fn _correct(&self) -> Self {
-    //     self.clone()
-    // }
-
-    // fn conf_from_seed(seed: u64) -> Self {
-    //     Self::gen_from_seed(seed)._correct()
-    // }
-
-    // fn conf_from_rns(rns: Vec<f32>) -> Self {
-    //     // go through and clamp
-    //     let rn_clamped = rns.iter().map(|x| x.clamp(0.0, 1.0)).collect::<Vec<_>>();
-
-    //     Self::sample_dist(&rn_clamped, 0)._correct()
-    // }
+    fn to_schema_with_hints(&self, s: &HashMap<String, String>) -> Result<MurreletSchema> {
+        self.data.to_schema_with_hints(s)
+    }
 }
 
 // set up livecoder
@@ -91,12 +94,6 @@ pub struct LiveCodeConf {
     app: AppConfig,
     drawing: DrawingConf,
 }
-
-// #[wasm_bindgen]
-// pub async fn gui_schema() -> String {
-// let data = DrawingConf::make_gui();
-//     serde_json::to_string(&data).unwrap_or_else(|_| "Serialization failed".to_string())
-// }
 
 // #[wasm_bindgen]
 // pub async fn rn_count() -> usize {
@@ -143,6 +140,29 @@ impl MurreletModel {
                 WasmMurreletModelResult::ok(r)
             }
             Err(e) => WasmMurreletModelResult::err(e),
+        }
+    }
+
+    #[wasm_bindgen]
+    pub async fn gui_schema(&self, hints: String) -> String {
+        let hints_map: std::collections::HashMap<String, String> =
+            serde_json::from_str(&hints).unwrap_or_default();
+
+        match self
+            .livecode
+            .config()
+            .drawing
+            .to_schema_with_hints(&hints_map)
+        {
+            Ok(data) => serde_json::to_string(&data.change_to_gui())
+                .unwrap_or_else(|_| "Serialization failed".to_string()),
+            Err(err) => {
+                let mut hm = HashMap::<String, String>::new();
+                hm.insert("error".to_string(), err.to_string());
+
+                serde_json::to_string(&hm)
+                    .unwrap_or_else(|_| "Error serialization failed".to_string())
+            }
         }
     }
 
