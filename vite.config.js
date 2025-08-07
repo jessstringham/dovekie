@@ -9,7 +9,7 @@ export default defineConfig({
       entry: "./dovekie.js",
       name: "dovekie",
       fileName: "dovekie",
-      formats: ["es"],
+      formats: ["es", "cjs"],
     },
     target: "esnext",
     outDir: "dist",

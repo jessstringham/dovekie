@@ -74,11 +74,12 @@ select option {
 }
 
 #submit {
-  width: 75%;
-  margin-top: 10px;
-  margin-left: 20px;
+  margin: 10px auto 0; /* auto left/right margins center it */
   font-family: "Space Grotesk", Helvetica, sans-serif;
-  display: inline-block;
+  display: block;
+
+  width: 75%;
+  /* display: inline-block; */
   padding: 12px 6px;
   font-size: 18px;
   color: white;
@@ -125,10 +126,17 @@ select option {
   transform: scale(0.9);
 }
 
+#editor-wrapper {
+  background-color: #000000;
+  border-radius: 8px;
+  overflow: hidden;
+  padding: 10px;
+  font-family: "Space Grotesk", Helvetica, sans-serif;
+}
+
 #editor {
   max-height: 100%;
-  /* background-color: #00ff95; */
-  overflow: scroll;
+  /* overflow: scroll; */
 }
 
 form {

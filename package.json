@@ -5,18 +5,19 @@
   "type": "module",
   "exports": {
     ".": {
+      "types": "./dist/dovekie.d.ts",
       "import": "./dist/dovekie.js",
-      "types": "./dist/dovekie.d.ts"
-    }
+      "require": "./dist/dovekie.cjs"
+    },
+    "./style": "./dist/dovekie.css"
   },
   "files": [
-    "dist",
-    "pkg"
+    "dist"
   ],
-  "style": "dist/style/editor.css",
   "scripts": {
     "package_rust": "sh package_rust.sh",
     "build": "npm run clean && npm run package_rust && vite build",
+    "dev": "vite build --watch",
     "clean": "rm -rf dist rust/pkg",
     "prepublishOnly": "npm run build"
   },
@@ -30,7 +31,5 @@
     "vite": "^7.0.5",
     "vite-plugin-top-level-await": "^1.4.1",
     "vite-plugin-wasm": "^3.3.0"
-  },
-  "unpkg": "./dist/dovekie.js",
-  "jsdelivr": "./dist/dovekie.js"
+  }
 }

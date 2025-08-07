@@ -1,6 +1,6 @@
 import init, { new_model } from "./rust/pkg/dovekie.js";
 import wasmUrl from "./rust/pkg/dovekie_bg.wasm?url";
-import "./public/style/editor.css";
+import "./style.css";
 import { MurreletGUI } from "./editor.js";
 
 const defaultApp = {
@@ -58,9 +58,39 @@ export class MurreletModel {
     if (this.murrelet === null) {
       console.error("setting up dovekie gui before initializing it!");
     } else {
-      this.gui = new MurreletGUI(this, gui_div);
+      let editor_container = document.createElement("div");
+      editor_container.id = "editor-wrapper";
+      gui_div.appendChild(editor_container);
+
+      let errmsg = document.createElement("div");
+      errmsg.id = "errmsg";
+      editor_container.appendChild(errmsg);
+
+      let editor = document.createElement("div");
+      editor.id = "editor";
+      editor_container.appendChild(editor);
+
+      const submit_button = document.createElement("button");
+      submit_button.id = "submit";
+      submit_button.textContent = "submit";
+      editor_container.appendChild(submit_button);
+
+      this.gui = new MurreletGUI(this, editor);
       await this.gui.init(schema_hints);
       this.gui.build_html(this.init_conf);
+
+      submit_button.onclick = async () => {
+        console.log("updating");
+        await this.gui.update();
+      };
+
+      editor.addEventListener("keydown", async (event) => {
+        if (event.metaKey && event.key === "Enter") {
+          console.log("updating");
+          await this.gui.update();
+        }
+      });
+
       return this.gui;
     }
   }
@@ -104,6 +134,7 @@ export class MurreletModel {
     const conf = { app: defaultApp, drawing: { data: convertedConf } };
     let errMsg = await this.reload(conf);
 
+    console.log("ERRMSG", errMsg);
     if (errMsg != "" && errMsg != "Success!") {
       console.log(JSON.stringify(drawingConf));
       console.log("error from drawing conf:", errMsg);
