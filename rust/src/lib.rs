@@ -272,10 +272,31 @@ impl MurreletModel {
         mouse_x: f32,
         mouse_y: f32,
         click: bool,
+        custom_variables: String,
     ) {
-        let app_input =
-            MurreletAppInput::new_no_key(vec2(dim_x, dim_y), vec2(mouse_x, mouse_y), click, frame);
+        let custom_vars: HashMap<String, f32> = match serde_json::from_str(&custom_variables) {
+            Ok(map) => map,
+            Err(err) => {
+                web_sys::console::error_1(
+                    &format!(
+                        "Failed to parse custom_variables (it should be string -> number): {}",
+                        err
+                    )
+                    .into(),
+                );
+                HashMap::new()
+            }
+        };
+
+        let app_input = MurreletAppInput::new_no_key(
+            vec2(dim_x, dim_y),
+            vec2(mouse_x, mouse_y),
+            click,
+            frame,
+            custom_vars,
+        );
         // todo, show an error from this?
+
         self.livecode.update(&app_input, false).ok();
     }
 

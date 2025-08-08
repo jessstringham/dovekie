@@ -20,16 +20,28 @@ export class MurreletModel {
     this.app_config = { ...defaultApp };
 
     // init some things about the mouse
-    this.mouse_x = 0.0; // mouse x
-    this.mouse_y = 0.0; // mouse y
-    this.mouse_down = false;
+    this.built_in_variables = {
+      mouse_x: 0.0, // mouse x
+      mouse_y: 0.0, // mouse y
+      mouse_down: false,
 
-    // init some things about the window (will update soon)
-    this.dim_x = 600.0; // will be w
-    this.dim_y = 600.0; // will be h
+      // init some things about the window (will update soon)
+      dim_x: 600.0, // will be w
+      dim_y: 600.0, // will be h
 
-    // init frame count
-    this.frame = 1n;
+      // init frame count
+      frame: 1n,
+    };
+    // this.mouse_x = 0.0; // mouse x
+    // this.mouse_y = 0.0; // mouse y
+    // this.mouse_down = false;
+
+    // // init some things about the window (will update soon)
+    // this.dim_x = 600.0; // will be w
+    // this.dim_y = 600.0; // will be h
+
+    // // init frame count
+    // this.frame = 1n;
 
     // initial, but once we successfully load the model we'll update this
 
@@ -44,14 +56,30 @@ export class MurreletModel {
       console.log("adding event listeners to ", this.svg);
       this.addEventListeners();
     } else {
-      console.log("undefined svg, not adding event listeners");
+      // console.log("undefined div, not adding event listeners");
+    }
+  }
+
+  set_div(div) {
+    this.svg = div;
+
+    if (this.svg) {
+      console.log("adding event listeners to ", this.svg);
+      this.addEventListeners();
+    } else {
+      console.log("undefined div, not adding event listeners");
     }
   }
 
   set_bpm(bpm) {
     if (!isNaN(Number(bpm))) {
       this.app_config.time.bpm = Number(bpm);
-    } else {
+    }
+  }
+
+  set_beats_per_bar(beats_per_bar) {
+    if (!isNaN(Number(beats_per_bar))) {
+      this.app_config.time.beats_per_bar = Number(beats_per_bar);
     }
   }
 
@@ -100,7 +128,6 @@ export class MurreletModel {
   }
 
   addEventListeners() {
-    console.log("svg", this.svg);
     this.svg.addEventListener("mousemove", (event) => this.mouseMove(event));
     this.svg.addEventListener("mousedown", (event) => this.mouseDown(event));
     this.svg.addEventListener("mouseup", (event) => this.mouseUp(event));
@@ -145,7 +172,7 @@ export class MurreletModel {
       return { is_success: false, err_msg };
     } else {
       console.log("success!");
-      this.update(async (conf) => await this.setConfig(conf));
+      this.update();
       this.init_conf = drawingConf;
 
       return { is_success: true };
@@ -213,15 +240,21 @@ export class MurreletModel {
     return confMsg;
   }
 
-  updateMurreletWithWorld() {
+  updateMurreletWithWorld(custom_variables) {
     if (this.murrelet !== null) {
+      let custom_vars = "{}";
+      if (custom_variables) {
+        custom_vars = JSON.stringify(custom_variables);
+      }
+
       this.murrelet.update_frame(
-        this.frame,
-        this.dim_x,
-        this.dim_y,
-        this.mouse_x,
-        this.mouse_y,
-        this.mouse_down
+        this.built_in_variables.frame,
+        this.built_in_variables.dim_x,
+        this.built_in_variables.dim_y,
+        this.built_in_variables.mouse_x,
+        this.built_in_variables.mouse_y,
+        this.built_in_variables.mouse_down,
+        custom_vars
       );
     }
   }
@@ -259,18 +292,18 @@ export class MurreletModel {
     }
   }
 
-  update() {
+  update(custom_variables) {
     if (this.murrelet !== null) {
       const t = performance.now();
 
       // You _could_ set up FPS, but I'm building this with the assumption folks
       // won't set realtime=false, so we'll just run as fast as we can
       // something like `t - this.lastUpdate > 1000 / this.fps`
-      this.updateMurreletWithWorld();
+      this.updateMurreletWithWorld(custom_variables);
 
       this.lastUpdate = t;
 
-      this.frame += 1n;
+      this.built_in_variables.frame += 1n;
     }
   }
 
