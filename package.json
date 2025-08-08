@@ -1,6 +1,6 @@
 {
   "name": "dovekie",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Javascript interface for Murrelet livecoding features",
   "type": "module",
   "exports": {
