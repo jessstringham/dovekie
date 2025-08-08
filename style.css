@@ -421,3 +421,9 @@ div:has(> div > .list-add:hover) {
 .back-button:active {
   transform: scale(0.95);
 }
+
+
+
+#errmsg {
+  background-color: #d85454;
+}

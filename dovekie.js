@@ -38,6 +38,8 @@ export class MurreletModel {
 
     this.init_conf = null;
 
+    this.gui = null;
+
     if (svg) {
       console.log("adding event listeners to ", this.svg);
       this.addEventListeners();
@@ -66,6 +68,8 @@ export class MurreletModel {
       errmsg.id = "errmsg";
       editor_container.appendChild(errmsg);
 
+      this.errmsg = errmsg;
+
       let editor = document.createElement("div");
       editor.id = "editor";
       editor_container.appendChild(editor);
@@ -75,18 +79,18 @@ export class MurreletModel {
       submit_button.textContent = "submit";
       editor_container.appendChild(submit_button);
 
-      this.gui = new MurreletGUI(this, editor);
+      this.gui = new MurreletGUI(this, editor, errmsg);
       await this.gui.init(schema_hints);
       this.gui.build_html(this.init_conf);
 
       submit_button.onclick = async () => {
-        console.log("updating");
+        // console.log("updating");
         await this.gui.update();
       };
 
       editor.addEventListener("keydown", async (event) => {
         if (event.metaKey && event.key === "Enter") {
-          console.log("updating");
+          // console.log("updating");
           await this.gui.update();
         }
       });
@@ -132,19 +136,19 @@ export class MurreletModel {
     // console.log(convertedConf);
 
     const conf = { app: defaultApp, drawing: { data: convertedConf } };
-    let errMsg = await this.reload(conf);
+    let err_msg = await this.reload(conf);
 
-    console.log("ERRMSG", errMsg);
-    if (errMsg != "" && errMsg != "Success!") {
+    if (err_msg != "" && err_msg != "Success!") {
       console.log(JSON.stringify(drawingConf));
-      console.log("error from drawing conf:", errMsg);
+      console.log("error from drawing conf:", err_msg);
 
-      return false;
+      return { is_success: false, err_msg };
     } else {
-      this.update();
+      console.log("success!");
+      this.update(async (conf) => await this.setConfig(conf));
       this.init_conf = drawingConf;
 
-      return true;
+      return { is_success: true };
     }
   }
 

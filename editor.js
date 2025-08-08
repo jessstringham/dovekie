@@ -813,9 +813,10 @@ function extract_rust_data(div) {
 
 // load up the schema
 export class MurreletGUI {
-  constructor(model, div) {
+  constructor(model, div, errmsg_div) {
     this.model = model;
     this.div = div; // editor div
+    this.errmsg_div = errmsg_div;
   }
 
   async init(schema_hints) {
@@ -891,17 +892,17 @@ export class MurreletGUI {
   async update() {
     let drawingConf = this.extract_config();
 
-    console.log(drawingConf);
+    // console.log(drawingConf);
 
     // let conf = { app: defaultApp, drawing: drawingConf };
 
     // console.log("reloading");
     // let errMsg = await model.reload(conf);
-    let was_success = await this.model.setConfig(drawingConf);
+    let { err_msg, is_success } = await this.model.setConfig(drawingConf);
     // console.log("done");
-    console.log("config updated", was_success);
+    console.log("config updated", is_success, err_msg);
 
-    if (was_success) {
+    if (is_success) {
       // only update the history if it was successful
       CONFIG_HISTORY.push(drawingConf);
 
@@ -916,9 +917,14 @@ export class MurreletGUI {
 
       this.conf_update(true);
       await this.model.update();
+
+      this.errmsg_div.innerText = "";
+
       return drawingConf;
     } else {
+      console.log(err_msg);
       this.conf_update(false);
+      this.errmsg_div.innerText = err_msg;
     }
   }
 }
