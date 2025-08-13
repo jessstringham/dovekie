@@ -84,9 +84,39 @@ export class MurreletModel {
   }
 
   // optionally set up a gui to update the drawing config
-  async setup_gui(gui_div, schema_hints) {
+  async setup_gui(gui_div, opts = {}) {
+    const { schema_hints = {}, url_param_key = "conf" } = opts;
+
+    const params = new URLSearchParams(window.location.search);
+    const objString = params.get(url_param_key);
+
+    let drawingConf;
+
+    try {
+      const obj = objString ? JSON.parse(decodeURIComponent(objString)) : null;
+
+      if (obj) {
+        drawingConf = obj;
+      } else {
+        console.log("parsing json failed");
+      }
+    } catch (error) {
+      console.error("Invalid JSON:", error, "using default");
+    }
+
+    const uninitialized_error_msg =
+      "Can't set up the GUI without an example of the drawing config! Call `this.setConfig(conf)` before calling this!";
+
+    if (!drawingConf) {
+      if (this.init_conf) {
+        drawingConf = this.init_conf;
+      } else {
+        console.error(uninitialized_error_msg);
+      }
+    }
+
     if (this.murrelet === null) {
-      console.error("setting up dovekie gui before initializing it!");
+      console.error(uninitialized_error_msg);
     } else {
       let editor_container = document.createElement("div");
       editor_container.id = "editor-wrapper";
@@ -107,18 +137,16 @@ export class MurreletModel {
       submit_button.textContent = "submit";
       editor_container.appendChild(submit_button);
 
-      this.gui = new MurreletGUI(this, editor, errmsg);
+      this.gui = new MurreletGUI(this, editor, errmsg, url_param_key);
       await this.gui.init(schema_hints);
-      this.gui.build_html(this.init_conf);
+      this.gui.build_html(drawingConf);
 
       submit_button.onclick = async () => {
-        // console.log("updating");
         await this.gui.update();
       };
 
       editor.addEventListener("keydown", async (event) => {
         if (event.metaKey && event.key === "Enter") {
-          // console.log("updating");
           await this.gui.update();
         }
       });
@@ -179,18 +207,30 @@ export class MurreletModel {
     }
   }
 
-  async initModel(conf) {
+  async initModel(conf, opts = {}) {
+    let { custom_model } = opts;
+
+    let model_func;
+    if (custom_model) {
+      model_func = custom_model;
+    } else {
+      model_func = new_model;
+    }
+
     // if we haven't successfully loaded it, try to do that
-    console.log("init model");
+    console.log("attempting to initialize model!");
     // try {
-    let model_or_err = await new_model(conf);
+    let model_or_err = await model_func(conf);
     if (model_or_err.is_err()) {
-      console.log(conf);
-      console.log("ERROR", model_or_err.err_msg());
+      console.error(
+        "error initializing with configuration",
+        conf,
+        model_or_err.err_msg()
+      );
       document.getElementById("err_msg").innerHTML = model_or_err.err_msg();
     } else {
       this.murrelet = model_or_err.to_model();
-      console.log("model init");
+      console.log("model successfully initialized!");
     }
     // } catch (err) {
     //   console.error("init failed", err);
@@ -240,7 +280,9 @@ export class MurreletModel {
     return confMsg;
   }
 
-  updateMurreletWithWorld(custom_variables) {
+  updateMurreletWithWorld(opts = {}) {
+    let { custom_variables } = opts;
+
     if (this.murrelet !== null) {
       let custom_vars = "{}";
       if (custom_variables) {

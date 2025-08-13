@@ -4,13 +4,13 @@ Livecode anything!
 
 Every time you add a parameter to code, you're creating an infinite world of possibilities. But it can be hard to explore them. One approach is to choose a few parameters and create an interface of sliders and dropdowns (e.g. [dat.gui](https://github.com/dataarts/dat.gui)).
 
-Dovekie aims to be more flexible: you can use expressions to combine time, mouse events, MIDI events, and whatever else you'd like! 
+Dovekie aims to be more flexible: you can use expressions to combine time, mouse events, MIDI events, and whatever else you'd like!
 
 *At this time, this is a work in progress! Things are rough and will totally change!*
 
 ## Lineage
 
-Dovekie is a JavaScript package that surfaces the livecoding features from the Rust package [Murrelet](https://github.com/jessstringham/murrelet) so you can use them in JavaScript. 
+Dovekie is a JavaScript package that surfaces the livecoding features from the Rust package [Murrelet](https://github.com/jessstringham/murrelet) so you can use them in JavaScript.
 
 ## Publications
 
@@ -22,7 +22,7 @@ Dovekie is a JavaScript package that surfaces the livecoding features from the R
 
 ## Functions to modify the global config
 
-When setting up the model, you can use these functions to 
+When setting up the model, you can use these functions to
 
 `model.set_div(div)`
 

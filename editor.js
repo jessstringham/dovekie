@@ -1,5 +1,67 @@
-// each time we load the page, we start over with the history..
-let CONFIG_HISTORY = [];
+class ConfigHistory {
+  constructor() {
+    this.history = JSON.parse(
+      localStorage.getItem("dovekie_config_history") || "[]"
+    );
+  }
+
+  clear() {
+    this.history = [];
+    this.save();
+  }
+
+  save() {
+    localStorage.setItem(
+      "dovekie_config_history",
+      JSON.stringify(this.history)
+    );
+  }
+
+  push(conf) {
+    let time = Date.now();
+    this.history.push({
+      name: null,
+      conf,
+      time,
+      id: `${time}-${Math.random().toString(36).substring(2, 7)}`,
+    });
+    this.save();
+  }
+
+  pop() {
+    if (this.history.length > 0) {
+      const item = this.history.pop();
+      this.save();
+      return item;
+    }
+    return undefined;
+  }
+
+  last() {
+    if (this.history.length > 0) {
+      return this.history[this.history.length - 1];
+    }
+    return undefined;
+  }
+
+  get length() {
+    return this.history.length;
+  }
+
+  rename_item(id, new_name)  {
+    const item = this.history.find((item) => item.id === id);
+    if (item) {
+      item.name = new_name;
+      this.save();
+    }
+  }
+
+  view() {
+    return this.history;
+  }
+}
+
+let CONFIG_HISTORY = new ConfigHistory();
 
 export function rehydrate(flattenedVals) {
   let result = {};
@@ -181,8 +243,6 @@ function make_collapse_label(div, label) {
 }
 
 function make_delete_button(div) {
-  console.log("deltee buttons");
-
   const button = document.createElement("button");
   button.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <line x1="4" y1="4" x2="20" y2="20" stroke="white" stroke-width="2" stroke-linecap="round"/>
@@ -761,8 +821,6 @@ function add_item(parentDiv, parentPath, parentSchema, parentInitValue, args) {
     return;
   }
 
-  console.log(parentSchema);
-
   for (const k in parentSchema) {
     let schema = parentSchema[k];
 
@@ -813,10 +871,11 @@ function extract_rust_data(div) {
 
 // load up the schema
 export class MurreletGUI {
-  constructor(model, div, errmsg_div) {
+  constructor(model, div, errmsg_div, url_param_key) {
     this.model = model;
     this.div = div; // editor div
     this.errmsg_div = errmsg_div;
+    this.url_param_key = url_param_key;
   }
 
   async init(schema_hints) {
@@ -865,19 +924,20 @@ export class MurreletGUI {
   // this.editor has the editor
   // this.model has the model
   async undo() {
-    // leave it alone
-    if (CONFIG_HISTORY.length <= 1) return;
-    // remove the current
-    CONFIG_HISTORY.pop();
+    let prevConf = CONFIG_HISTORY.pop();
+    await this.build_edit_page_from_divs(prevConf.conf);
+  }
 
-    const prevConf = CONFIG_HISTORY[CONFIG_HISTORY.length - 1];
+  history() {
+    return CONFIG_HISTORY.history;
+  }
 
-    if (CONFIG_HISTORY.length == 0) {
-      // just don't do anything
-      CONFIG_HISTORY = [prevConf];
-    }
-    console.log(CONFIG_HISTORY);
-    await this.build_edit_page_from_divs(prevConf);
+  rename_item_in_history(id, new_name) {
+    CONFIG_HISTORY.rename_item(id, new_name);
+  }
+
+  clear_history() {
+    CONFIG_HISTORY.clear();
   }
 
   async build_edit_page_from_divs(conf) {
@@ -900,7 +960,6 @@ export class MurreletGUI {
     // let errMsg = await model.reload(conf);
     let { err_msg, is_success } = await this.model.setConfig(drawingConf);
     // console.log("done");
-    console.log("config updated", is_success, err_msg);
 
     if (is_success) {
       // only update the history if it was successful
@@ -910,10 +969,10 @@ export class MurreletGUI {
       const confUri = encodeURIComponent(confString);
 
       const params = new URLSearchParams(window.location.search);
-      params.set("conf", confUri); // Add or update 'obj' parameter
+      params.set(this.url_param_key, confUri);
 
       const newUrl = `${window.location.pathname}?${params.toString()}`;
-      history.replaceState(null, "", newUrl); // Updates the URL without reloading
+      history.replaceState(null, "", newUrl);
 
       this.conf_update(true);
       await this.model.update();
