@@ -6,7 +6,7 @@ Every time you add a parameter to code, you're creating an infinite world of pos
 
 Dovekie aims to be more flexible: you can use expressions to combine time, mouse events, MIDI events, and whatever else you'd like!
 
-*At this time, this is a work in progress! Things are rough and will totally change!*
+_At this time, this is a work in progress! Things are rough and will totally change!_
 
 ## Lineage
 
@@ -17,8 +17,35 @@ Dovekie is a JavaScript package that surfaces the livecoding features from the R
 [ICLC 2025](https://zenodo.org/records/15527382)
 [Alpaca 2023](https://alpaca.pubpub.org/pub/dpdnf8lw/release/1?readingCollection=1def0192)
 
-# Expression language
+# Setup
 
+The file [examples/basic.html](examples/basic.html) should have a working example.
+
+Call this once to initialize:
+
+```js
+await wasmInit();
+let model = new Dovekie();
+
+// attach a few useful event handlers if you want
+model.set_div(div);
+
+// set up the automatic gui if you want
+await model.setup_gui(editor_container, {
+  schema_hints: SCHEMA_HINTS,
+  sketch_name: "basic",
+});
+```
+
+Then every frame, you'll want to update and access the parameters!
+
+```js
+model.update({ custom_variables: CUSTOM_VARIABLES });
+
+const params = model.params();
+```
+
+# Expression language
 
 ## Functions to modify the global config
 
@@ -36,24 +63,24 @@ update the beats per minute to 80.
 
 Sets the number of beats per bar.
 
-
 ## Built-in variables
 
- - `t` (float) `ti` (int): the current "bar" of music, e.g. increases by 1.0 every `bpm` / `beats_per_bar`.
- - `tease`: a shortcut for a value that eases between 0 and 1 every 4 bars.
- - `f` (float) `fi` (int): the frame
+- `t` (float) `ti` (int): the current "bar" of music, e.g. increases by 1.0 every `bpm` / `beats_per_bar`.
+- `tease`: a shortcut for a value that eases between 0 and 1 every 4 bars.
+- `f` (float) `fi` (int): the frame
 
 if `set_div` was called
- - `w` and `h` the width and height of the provided div
- - `cx` and `cy` the x and y coordinates within the provided div of the last click location
- - `mx` and `my` the x and y coordinates within the provided div of the last mouse location
+
+- `w` and `h` the width and height of the provided div
+- `cx` and `cy` the x and y coordinates within the provided div of the last click location
+- `mx` and `my` the x and y coordinates within the provided div of the last mouse location
 
 ## Custom variables
 
 You can add in your own variables! If you send in a dictionary to `model.update` , it'll update the variable value which can then be used in expressions.
 
 ```js
-model.update({ "audio": 2.1 });
+model.update({ audio: 2.1 });
 ```
 
 ## functions
@@ -70,8 +97,6 @@ model.update({ "audio": 2.1 });
 
 uses the floor of `seed` to create a pseudo-random number. `seed offset` is conveninent shorthand if you want multiple different random numbers from the same source.
 
-
-
-
 # Dev
 
+I usually run `npm run dev` to watch the javascript/rust and build the bundle, and then I can run `python -m http.server 8000` in the folder and go look at `examples/basic.html` or whatever file.
