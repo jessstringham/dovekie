@@ -969,7 +969,7 @@ export class MurreletGUI {
     return this.config_history.history;
   }
 
-  rename_item_in_history(id, new_name) {
+  rename_history(id, new_name) {
     this.config_history.rename_item(id, new_name);
   }
 

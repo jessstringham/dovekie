@@ -313,6 +313,7 @@ export class Dovekie {
     if (this.murrelet !== null) {
       let custom_vars;
       if (custom_variables) {
+        console.log(custom_variables);
         custom_vars = JSON.stringify(custom_variables);
       } else {
         custom_vars = "{}";

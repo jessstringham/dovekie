@@ -28,6 +28,12 @@
         height: 400px;
         margin-right: 20px;
       }
+
+      #kaoss {
+        width: 320px;
+        height: 320px;
+        background-color: antiquewhite;
+      }
     </style>
   </head>
 
@@ -45,6 +51,7 @@
         </svg>
       </div>
       <div id="editor-container"></div>
+      <div id="kaoss"></div>
     </div>
 
     <link rel="stylesheet" href="../dist/dovekie.css" />
@@ -66,16 +73,27 @@
       // example of setting up custom variables!
       let CUSTOM_VARIABLES = {};
 
-      function setup_audio() {
-        // do code to setup audio!
-        CUSTOM_VARIABLES.a = 0;
+      function setup_kaoss() {
+        CUSTOM_VARIABLES.kx = 0;
+        CUSTOM_VARIABLES.ky = 0;
 
-        function updateAudioLevel() {
-          // do some things to set the audio!
-          CUSTOM_VARIABLES.a = Math.abs(Math.sin(performance.now() * 0.001));
-        }
+        const kaoss = document.getElementById("kaoss");
+        kaoss.style.width = "300px";
+        kaoss.style.height = "300px";
 
-        return updateAudioLevel;
+        const svgNS = "http://www.w3.org/2000/svg";
+        const kaossSvg = document.createElementNS(svgNS, "svg");
+        kaossSvg.setAttribute("width", "300");
+        kaossSvg.setAttribute("height", "300");
+        kaoss.appendChild(kaossSvg);
+
+        kaoss.addEventListener("mousemove", function (event) {
+          const rect = kaoss.getBoundingClientRect();
+          const x = event.clientX - rect.left;
+          const y = event.clientY - rect.top;
+          CUSTOM_VARIABLES.kx = x / rect.width;
+          CUSTOM_VARIABLES.ky = y / rect.height;
+        });
       }
 
       async function main() {
@@ -105,10 +123,13 @@
         // model.gui.rename_history(item.uuid, "new name");
         // model.gui.clear_history();
 
-        let update_audio = setup_audio();
+        // this will set up some custom variables
+        setup_kaoss();
 
         function animate() {
-          update_audio();
+          // if you need to ping for variables, do it here!
+          // in this case, we're using an event, so it should be up-to-date
+          // update_custom_variables();
           model.update({ custom_variables: CUSTOM_VARIABLES }); // call once per frame!
 
           const params = model.params();
