@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Basic Dovekie Test!</title>
+    <style>
+      #gui-box {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+      }
+
+      .container {
+        display: flex;
+        position: relative;
+      }
+
+      #editor-container {
+        width: 400px;
+        height: 400px;
+        margin-right: 20px;
+      }
+
+      #sketch {
+        width: 400px;
+        height: 400px;
+        margin-right: 20px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Dovekie</h1>
+    <div class="container">
+      <div id="sketch">
+        <svg
+          id="svgBox"
+          width="400"
+          height="400"
+          style="border: 1px solid black"
+        >
+          <circle id="circle" cx="50" cy="50" r="30" fill="blue" />
+        </svg>
+      </div>
+      <div id="editor-container"></div>
+    </div>
+
+    <link rel="stylesheet" href="../dist/dovekie.css" />
+    <script type="module">
+      import { Dovekie, wasmInit } from "../dist/dovekie.js";
+
+      let INITIAL_CONFIG = {
+        xy: [
+          "s(floor(rn(t * 0.3, 42) * 4) / 3, 0, w)",
+          "s(ramp(t, 0.3), h, 0)",
+        ],
+        gray: "my/h",
+      };
+      let SCHEMA_HINTS = {
+        xy: "Vec2",
+        gray: "Num",
+      };
+
+      // example of setting up custom variables!
+      let CUSTOM_VARIABLES = {};
+
+      function setup_audio() {
+        // do code to setup audio!
+        CUSTOM_VARIABLES.a = 0;
+
+        function updateAudioLevel() {
+          // do some things to set the audio!
+          CUSTOM_VARIABLES.a = Math.abs(Math.sin(performance.now() * 0.001));
+        }
+
+        return updateAudioLevel;
+      }
+
+      async function main() {
+        await wasmInit();
+        let model = new Dovekie();
+
+        let div = document.getElementById("ctrl-box");
+        model.set_bpm(80);
+        model.set_div(div);
+
+        // initialize the config. This is also used by setup gui to infer a schema!
+        await model.set_config(INITIAL_CONFIG);
+
+        let editor_container = document.getElementById("editor-container");
+
+        await model.setup_gui(editor_container, {
+          schema_hints: SCHEMA_HINTS,
+          sketch_name: "basic",
+        });
+
+        console.log(model.gui.history());
+
+        // model.gui.clear_history();
+
+        // i think it'll just be await model.set_config(item.conf);
+
+        // model.gui.rename_history(item.uuid, "new name");
+        // model.gui.clear_history();
+
+        let update_audio = setup_audio();
+
+        function animate() {
+          update_audio();
+          model.update({ custom_variables: CUSTOM_VARIABLES }); // call once per frame!
+
+          const params = model.params();
+          // example format of params
+          // {
+          //   data: 0.214,
+          //   nested: {
+          //     nested_thing: 1.0,
+          //     test: [1, 2, 0.214],
+          //   },
+          // }
+
+          // example code that updates a circle!!
+          const svg = document.getElementById("svg");
+          let circle = document.getElementById("circle");
+          if (circle && params.xy) {
+            circle.setAttribute("cx", params.xy[0]);
+            circle.setAttribute("cy", params.xy[1]);
+            const gray = Math.max(0, Math.min(1, params.gray));
+            const gray255 = Math.round(gray * 255);
+            circle.setAttribute(
+              "fill",
+              `rgb(${gray255},${gray255},${gray255})`
+            );
+            circle.setAttribute("stroke", "black");
+            circle.setAttribute("stroke-width", "2");
+          }
+
+          requestAnimationFrame(animate);
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        main();
+      });
+    </script>
+  </body>
+</html>

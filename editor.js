@@ -1,7 +1,14 @@
+import { ValuesHistory } from "./sparklines.js";
+
 class ConfigHistory {
-  constructor() {
+  constructor(sketch_name = "") {
+    this.local_storage_name = "dovekie_config_history";
+    if (sketch_name) {
+      this.local_storage_name = `${this.local_storage_name}.${sketch_name}`;
+    }
+
     this.history = JSON.parse(
-      localStorage.getItem("dovekie_config_history") || "[]"
+      localStorage.getItem(this.local_storage_name) || "[]"
     );
   }
 
@@ -11,10 +18,7 @@ class ConfigHistory {
   }
 
   save() {
-    localStorage.setItem(
-      "dovekie_config_history",
-      JSON.stringify(this.history)
-    );
+    localStorage.setItem(this.local_storage_name, JSON.stringify(this.history));
   }
 
   push(conf) {
@@ -48,7 +52,7 @@ class ConfigHistory {
     return this.history.length;
   }
 
-  rename_item(id, new_name)  {
+  rename_item(id, new_name) {
     const item = this.history.find((item) => item.id === id);
     if (item) {
       item.name = new_name;
@@ -60,8 +64,6 @@ class ConfigHistory {
     return this.history;
   }
 }
-
-let CONFIG_HISTORY = new ConfigHistory();
 
 export function rehydrate(flattenedVals) {
   let result = {};
@@ -675,8 +677,25 @@ function add_list(parentDiv, parentPath, parentSchema, parentInitValue, args) {
   make_thing_toggle_other(collapse, editArrow);
 }
 
-function input_val_num(parentDiv, parentPath, parentInitValue) {
-  make_input(parentDiv, "val-num", parentPath, parentInitValue || 0.0);
+function input_val_num(parentDiv, rust_id, parentInitValue) {
+  let wrapper = make_div(parentDiv, "val-num-flex");
+  wrapper.style.display = "flex";
+  wrapper.style.alignItems = "center";
+  wrapper.style.gap = "8px";
+  wrapper.style.width = "100%";
+  wrapper.style.height = "100%";
+
+  // todo, it'd be nice if this was all over in sparklines...
+  let sparkline = make_div(wrapper, "val-num-sparkline");
+  sparkline.style.background = "#464646ff";
+  sparkline.style.width = "80px";
+  sparkline.style.height = "20px";
+  sparkline.setAttribute("data-sparkline-rust-path", rust_id);
+  sparkline.setAttribute("data-sparkline-kind", "num");
+
+  make_input(wrapper, "val-num", rust_id, parentInitValue || 0.0);
+
+  return wrapper;
 }
 
 function input_val_bool(parentDiv, parentPath, parentInitValue) {
@@ -871,17 +890,29 @@ function extract_rust_data(div) {
 
 // load up the schema
 export class MurreletGUI {
-  constructor(model, div, errmsg_div, url_param_key) {
+  constructor(
+    model,
+    div,
+    errmsg_div,
+    { url_param_key = "conf", sketch_name = "", keep_history = true } = {}
+  ) {
     this.model = model;
     this.div = div; // editor div
     this.errmsg_div = errmsg_div;
     this.url_param_key = url_param_key;
+
+    if (keep_history) {
+      this.values_history = new ValuesHistory();
+    }
+
+    this.config_history = new ConfigHistory(sketch_name);
   }
 
   async init(schema_hints) {
     if (!schema_hints) {
       schema_hints = {};
     }
+
     let raw_gui_schema = await this.model.murrelet.gui_schema(
       JSON.stringify(schema_hints)
     );
@@ -924,20 +955,26 @@ export class MurreletGUI {
   // this.editor has the editor
   // this.model has the model
   async undo() {
-    let prevConf = CONFIG_HISTORY.pop();
+    let prevConf = this.config_history.pop();
     await this.build_edit_page_from_divs(prevConf.conf);
   }
 
+  update_values() {
+    if (this.values_history) {
+      this.values_history.update(this.model.params());
+    }
+  }
+
   history() {
-    return CONFIG_HISTORY.history;
+    return this.config_history.history;
   }
 
   rename_item_in_history(id, new_name) {
-    CONFIG_HISTORY.rename_item(id, new_name);
+    this.config_history.rename_item(id, new_name);
   }
 
   clear_history() {
-    CONFIG_HISTORY.clear();
+    this.config_history.clear();
   }
 
   async build_edit_page_from_divs(conf) {
@@ -958,12 +995,12 @@ export class MurreletGUI {
 
     // console.log("reloading");
     // let errMsg = await model.reload(conf);
-    let { err_msg, is_success } = await this.model.setConfig(drawingConf);
+    let { err_msg, is_success } = await this.model.set_config(drawingConf);
     // console.log("done");
 
     if (is_success) {
       // only update the history if it was successful
-      CONFIG_HISTORY.push(drawingConf);
+      this.config_history.push(drawingConf);
 
       let confString = JSON.stringify(drawingConf);
       const confUri = encodeURIComponent(confString);

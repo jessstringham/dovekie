@@ -12,8 +12,11 @@ export async function wasmInit() {
   await init(wasmUrl);
 }
 
-export class MurreletModel {
-  constructor(svg) {
+export class Dovekie {
+  constructor(opts = { svg: null }) {
+    // if you want to use mouse events, use this to set what the mouse is relative to!
+    const { svg } = opts;
+
     this.murrelet = null;
     this.svg = svg;
 
@@ -32,18 +35,6 @@ export class MurreletModel {
       // init frame count
       frame: 1n,
     };
-    // this.mouse_x = 0.0; // mouse x
-    // this.mouse_y = 0.0; // mouse y
-    // this.mouse_down = false;
-
-    // // init some things about the window (will update soon)
-    // this.dim_x = 600.0; // will be w
-    // this.dim_y = 600.0; // will be h
-
-    // // init frame count
-    // this.frame = 1n;
-
-    // initial, but once we successfully load the model we'll update this
 
     this.fps = 30; // initial, but we'll load this from the config
     this.lastUpdate = performance.now();
@@ -52,7 +43,7 @@ export class MurreletModel {
 
     this.gui = null;
 
-    if (svg) {
+    if (this.svg) {
       console.log("adding event listeners to ", this.svg);
       this.addEventListeners();
     } else {
@@ -84,9 +75,10 @@ export class MurreletModel {
   }
 
   // optionally set up a gui to update the drawing config
-  async setup_gui(gui_div, opts = {}) {
-    const { schema_hints = {}, url_param_key = "conf" } = opts;
-
+  async setup_gui(
+    gui_div,
+    { schema_hints = {}, url_param_key = "conf", sketch_name = null } = {}
+  ) {
     const params = new URLSearchParams(window.location.search);
     const objString = params.get(url_param_key);
 
@@ -105,7 +97,7 @@ export class MurreletModel {
     }
 
     const uninitialized_error_msg =
-      "Can't set up the GUI without an example of the drawing config! Call `this.setConfig(conf)` before calling this!";
+      "Can't set up the GUI without an example of the drawing config! Call `this.set_config(conf)` before calling this!";
 
     if (!drawingConf) {
       if (this.init_conf) {
@@ -137,7 +129,9 @@ export class MurreletModel {
       submit_button.textContent = "submit";
       editor_container.appendChild(submit_button);
 
-      this.gui = new MurreletGUI(this, editor, errmsg, url_param_key);
+      this.gui = new MurreletGUI(this, editor, errmsg, url_param_key, {
+        sketch_name,
+      });
       await this.gui.init(schema_hints);
       this.gui.build_html(drawingConf);
 
@@ -168,10 +162,10 @@ export class MurreletModel {
 
   async init() {
     await init();
-    return new MurreletModel();
+    return new Dovekie();
   }
 
-  async setConfig(drawingConf) {
+  async set_config(drawingConf) {
     // we don't support hashmaps yet, so just convert to vec
     function convertToVec(obj) {
       return Object.entries(obj).map(([key, value]) => {
@@ -200,7 +194,7 @@ export class MurreletModel {
       return { is_success: false, err_msg };
     } else {
       console.log("success!");
-      this.update();
+      this.update({});
       this.init_conf = drawingConf;
 
       return { is_success: true };
@@ -219,22 +213,25 @@ export class MurreletModel {
 
     // if we haven't successfully loaded it, try to do that
     console.log("attempting to initialize model!");
-    // try {
-    let model_or_err = await model_func(conf);
-    if (model_or_err.is_err()) {
-      console.error(
-        "error initializing with configuration",
-        conf,
-        model_or_err.err_msg()
-      );
-      document.getElementById("err_msg").innerHTML = model_or_err.err_msg();
-    } else {
-      this.murrelet = model_or_err.to_model();
-      console.log("model successfully initialized!");
+    try {
+      if (typeof conf !== "string") {
+        conf = JSON.stringify(conf);
+      }
+      let model_or_err = await model_func(conf);
+      if (model_or_err.is_err()) {
+        console.error(
+          "error initializing with configuration",
+          conf,
+          model_or_err.err_msg()
+        );
+        document.getElementById("err_msg").innerHTML = model_or_err.err_msg();
+      } else {
+        this.murrelet = model_or_err.to_model();
+        console.log("model successfully initialized!");
+      }
+    } catch (err) {
+      console.error("init failed", err);
     }
-    // } catch (err) {
-    //   console.error("init failed", err);
-    // }
   }
 
   paths() {
@@ -280,27 +277,6 @@ export class MurreletModel {
     return confMsg;
   }
 
-  updateMurreletWithWorld(opts = {}) {
-    let { custom_variables } = opts;
-
-    if (this.murrelet !== null) {
-      let custom_vars = "{}";
-      if (custom_variables) {
-        custom_vars = JSON.stringify(custom_variables);
-      }
-
-      this.murrelet.update_frame(
-        this.built_in_variables.frame,
-        this.built_in_variables.dim_x,
-        this.built_in_variables.dim_y,
-        this.built_in_variables.mouse_x,
-        this.built_in_variables.mouse_y,
-        this.built_in_variables.mouse_down,
-        custom_vars
-      );
-    }
-  }
-
   // get world state
   updateWindowSize() {
     if (this.svg) {
@@ -313,7 +289,6 @@ export class MurreletModel {
   mouseMove(event) {
     if (this.svg) {
       const rect = this.svg.getBoundingClientRect();
-
       // Calculate the x and y coordinates relative to the container
       this.mouse_x = event.clientX - rect.left;
       this.mouse_y = event.clientY - rect.top;
@@ -334,17 +309,32 @@ export class MurreletModel {
     }
   }
 
-  update(custom_variables) {
+  update({ custom_variables = null } = {}) {
     if (this.murrelet !== null) {
-      const t = performance.now();
+      let custom_vars;
+      if (custom_variables) {
+        custom_vars = JSON.stringify(custom_variables);
+      } else {
+        custom_vars = "{}";
+      }
 
-      // You _could_ set up FPS, but I'm building this with the assumption folks
-      // won't set realtime=false, so we'll just run as fast as we can
-      // something like `t - this.lastUpdate > 1000 / this.fps`
-      this.updateMurreletWithWorld(custom_variables);
+      this.murrelet.update_frame(
+        this.built_in_variables.frame,
+        this.built_in_variables.dim_x,
+        this.built_in_variables.dim_y,
+        this.built_in_variables.mouse_x,
+        this.built_in_variables.mouse_y,
+        this.built_in_variables.mouse_down,
+        custom_vars
+      );
 
-      this.lastUpdate = t;
+      // if we have a gui, update the values every few frames
+      if (Number(this.built_in_variables.frame) % 5 == 0 && this.gui) {
+        this.gui.update_values();
+      }
 
+      // update the variables that depend on when updates happen!
+      this.lastUpdate = performance.now();
       this.built_in_variables.frame += 1n;
     }
   }

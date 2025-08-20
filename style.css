@@ -30,7 +30,7 @@ textarea {
   font-family: monospace;
   font-size: 18px;
 
-  width: 100%;
+  /* width: 100%; */
   box-sizing: border-box;
 }
 
@@ -163,7 +163,7 @@ form {
 .struct-field {
   display: flex;
   align-items: top;
-  gap: 8px; /* space betrween fields */
+  gap: 8px;
   margin-bottom: 8px;
   margin-top: 8px;
   color: rgb(187, 187, 187);
@@ -422,8 +422,12 @@ div:has(> div > .list-add:hover) {
   transform: scale(0.95);
 }
 
-
-
 #errmsg {
   background-color: #d85454;
+}
+
+.val-num-container {
+  width: 100%;
+  padding-right: 2px;
+  height: 28px;
 }
