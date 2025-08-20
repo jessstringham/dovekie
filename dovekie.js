@@ -281,8 +281,8 @@ export class Dovekie {
   updateWindowSize() {
     if (this.svg) {
       const rect = this.svg.getBoundingClientRect();
-      this.dim_x = rect.width;
-      this.dim_y = rect.height;
+      this.built_in_variables.dim_x = rect.width;
+      this.built_in_variables.dim_y = rect.height;
     }
   }
 
@@ -290,17 +290,17 @@ export class Dovekie {
     if (this.svg) {
       const rect = this.svg.getBoundingClientRect();
       // Calculate the x and y coordinates relative to the container
-      this.mouse_x = event.clientX - rect.left;
-      this.mouse_y = event.clientY - rect.top;
+      this.built_in_variables.mouse_x = event.clientX - rect.left;
+      this.built_in_variables.mouse_y = event.clientY - rect.top;
     }
   }
 
   mouseDown() {
-    this.mouse_down = true;
+    this.built_in_variables.mouse_down = true;
   }
 
   mouseUp() {
-    this.mouse_down = false;
+    this.built_in_variables.mouse_down = false;
   }
 
   state() {

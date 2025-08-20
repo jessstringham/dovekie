@@ -34,9 +34,9 @@
   <body>
     <h1>Dovekie</h1>
     <div class="container">
-      <div id="sketch">
+      <div>
         <svg
-          id="svgBox"
+          id="sketch"
           width="400"
           height="400"
           style="border: 1px solid black"
@@ -82,7 +82,7 @@
         await wasmInit();
         let model = new Dovekie();
 
-        let div = document.getElementById("ctrl-box");
+        let div = document.getElementById("sketch");
         model.set_bpm(80);
         model.set_div(div);
 
@@ -96,7 +96,7 @@
           sketch_name: "basic",
         });
 
-        console.log(model.gui.history());
+        // console.log(model.gui.history());
 
         // model.gui.clear_history();
 
