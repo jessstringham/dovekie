@@ -63,7 +63,7 @@ class ConfigHistory {
   }
 
   view() {
-    return this.history;
+    return [...this.history].sort((a, b) => b.time - a.time);
   }
 }
 
