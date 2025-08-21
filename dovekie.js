@@ -1,7 +1,7 @@
 import init, { new_model } from "./rust/pkg/dovekie.js";
 import wasmUrl from "./rust/pkg/dovekie_bg.wasm?url";
 import "./style.css";
-import { MurreletGUI } from "./editor.js";
+import { MurreletGUI, try_to_get_conf_from_url } from "./editor.js";
 
 const defaultApp = {
   time: {},
@@ -13,7 +13,7 @@ export async function wasmInit() {
 }
 
 export class Dovekie {
-  constructor(opts = { svg: null }) {
+  constructor(opts = { svg: null, url_param_key: "conf" }) {
     // if you want to use mouse events, use this to set what the mouse is relative to!
     const { svg } = opts;
 
@@ -79,22 +79,24 @@ export class Dovekie {
     gui_div,
     { schema_hints = {}, url_param_key = "conf", sketch_name = null } = {}
   ) {
-    const params = new URLSearchParams(window.location.search);
-    const objString = params.get(url_param_key);
+    // const params = new URLSearchParams(window.location.search);
+    // const objString = params.get(url_param_key);
 
-    let drawingConf;
+    // let drawingConf;
 
-    try {
-      const obj = objString ? JSON.parse(decodeURIComponent(objString)) : null;
+    // try {
+    //   const obj = objString ? JSON.parse(decodeURIComponent(objString)) : null;
 
-      if (obj) {
-        drawingConf = obj;
-      } else {
-        console.log("parsing json failed");
-      }
-    } catch (error) {
-      console.error("Invalid JSON:", error, "using default");
-    }
+    //   if (obj) {
+    //     drawingConf = obj;
+    //   } else {
+    //     console.log("no json in url, using default.");
+    //   }
+    // } catch (error) {
+    //   console.error("Invalid JSON:", error, "using default");
+    // }
+
+    let drawingConf = try_to_get_conf_from_url(url_param_key);
 
     const uninitialized_error_msg =
       "Can't set up the GUI without an example of the drawing config! Call `this.set_config(conf)` before calling this!";
@@ -129,7 +131,8 @@ export class Dovekie {
       submit_button.textContent = "submit";
       editor_container.appendChild(submit_button);
 
-      this.gui = new MurreletGUI(this, editor, errmsg, url_param_key, {
+      this.gui = new MurreletGUI(this, editor, errmsg, {
+        url_param_key,
         sketch_name,
       });
       await this.gui.init(schema_hints);
@@ -313,7 +316,6 @@ export class Dovekie {
     if (this.murrelet !== null) {
       let custom_vars;
       if (custom_variables) {
-        console.log(custom_variables);
         custom_vars = JSON.stringify(custom_variables);
       } else {
         custom_vars = "{}";

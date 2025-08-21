@@ -1,5 +1,7 @@
 import { ValuesHistory } from "./sparklines.js";
 
+const MAX_UNNAMED_HISTORY = 10;
+
 class ConfigHistory {
   constructor(sketch_name = "") {
     this.local_storage_name = "dovekie_config_history";
@@ -29,6 +31,21 @@ class ConfigHistory {
       time,
       id: `${time}-${Math.random().toString(36).substring(2, 7)}`,
     });
+
+    // if we have more than MAX_UNNAMED_HISTORY unnamed things, remove the older ones. keep all the named ones.
+    const unnamedItems = this.history
+      .filter((item) => item.name === null)
+      .sort((a, b) => b.time - a.time);
+
+    if (unnamedItems.length > MAX_UNNAMED_HISTORY) {
+      const newestIds = unnamedItems
+        .slice(0, MAX_UNNAMED_HISTORY)
+        .map((item) => item.id);
+      this.history = this.history.filter(
+        (item) => item.name !== null || newestIds.includes(item.id)
+      );
+    }
+
     this.save();
   }
 
@@ -680,18 +697,12 @@ function add_list(parentDiv, parentPath, parentSchema, parentInitValue, args) {
 }
 
 function input_val_num(parentDiv, rust_id, parentInitValue) {
+  // adding the sparklines!
   let wrapper = make_div(parentDiv, "val-num-flex");
-  wrapper.style.display = "flex";
-  wrapper.style.alignItems = "center";
-  wrapper.style.gap = "8px";
-  wrapper.style.width = "100%";
-  wrapper.style.height = "100%";
 
   // todo, it'd be nice if this was all over in sparklines...
   let sparkline = make_div(wrapper, "val-num-sparkline");
-  sparkline.style.background = "#464646ff";
-  sparkline.style.width = "80px";
-  sparkline.style.height = "20px";
+
   sparkline.setAttribute("data-sparkline-rust-path", rust_id);
   sparkline.setAttribute("data-sparkline-kind", "num");
 
@@ -1004,14 +1015,7 @@ export class MurreletGUI {
       // only update the history if it was successful
       this.config_history.push(drawingConf);
 
-      let confString = JSON.stringify(drawingConf);
-      const confUri = encodeURIComponent(confString);
-
-      const params = new URLSearchParams(window.location.search);
-      params.set(this.url_param_key, confUri);
-
-      const newUrl = `${window.location.pathname}?${params.toString()}`;
-      history.replaceState(null, "", newUrl);
+      this.save_to_url(drawingConf);
 
       this.conf_update(true);
       await this.model.update();
@@ -1025,4 +1029,41 @@ export class MurreletGUI {
       this.errmsg_div.innerText = err_msg;
     }
   }
+
+  update_from_url() {
+    let conf = try_to_get_conf_from_url(this.url_param_key);
+    if (conf) {
+      this.build_html(conf);
+    }
+  }
+
+  save_to_url(drawingConf) {
+    let confString = JSON.stringify(drawingConf);
+    const confUri = encodeURIComponent(confString);
+
+    const params = new URLSearchParams(window.location.search);
+    params.set(this.url_param_key, confUri);
+
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    history.replaceState(null, "", newUrl);
+  }
+}
+
+export function try_to_get_conf_from_url(url_param_key) {
+  const params = new URLSearchParams(window.location.search);
+  const objString = params.get(url_param_key);
+
+  try {
+    const obj = objString ? JSON.parse(decodeURIComponent(objString)) : null;
+
+    if (obj) {
+      return obj;
+    } else {
+      console.log("no json in url.");
+    }
+  } catch (error) {
+    console.error("Invalid JSON in conf:", error);
+  }
+
+  return null;
 }
