@@ -57,6 +57,8 @@ class ConfigHistory {
     if (item) {
       item.name = new_name;
       this.save();
+    } else {
+      console.error("no item with id", id);
     }
   }
 
