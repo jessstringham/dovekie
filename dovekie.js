@@ -77,25 +77,13 @@ export class Dovekie {
   // optionally set up a gui to update the drawing config
   async setup_gui(
     gui_div,
-    { schema_hints = {}, url_param_key = "conf", sketch_name = null } = {}
+    {
+      schema_hints = {},
+      url_param_key = "conf",
+      sketch_name = null,
+      set_config_callback = null,
+    } = {}
   ) {
-    // const params = new URLSearchParams(window.location.search);
-    // const objString = params.get(url_param_key);
-
-    // let drawingConf;
-
-    // try {
-    //   const obj = objString ? JSON.parse(decodeURIComponent(objString)) : null;
-
-    //   if (obj) {
-    //     drawingConf = obj;
-    //   } else {
-    //     console.log("no json in url, using default.");
-    //   }
-    // } catch (error) {
-    //   console.error("Invalid JSON:", error, "using default");
-    // }
-
     let drawingConf = try_to_get_conf_from_url(url_param_key);
 
     const uninitialized_error_msg =
@@ -148,6 +136,8 @@ export class Dovekie {
         }
       });
 
+      this.set_config_callback = set_config_callback;
+
       return this.gui;
     }
   }
@@ -197,8 +187,13 @@ export class Dovekie {
       return { is_success: false, err_msg };
     } else {
       console.log("success!");
-      this.update({});
+      this.update({}); // we leave custom variables alone
       this.init_conf = drawingConf;
+
+      if (this.set_config_callback) {
+        // doing extra work here but maybe that'll make sure it's consistent!
+        this.set_config_callback(this.params());
+      }
 
       return { is_success: true };
     }
@@ -332,7 +327,7 @@ export class Dovekie {
       );
 
       // if we have a gui, update the values every few frames
-      if (Number(this.built_in_variables.frame) % 5 == 0 && this.gui) {
+      if (this.built_in_variables.frame % 5n == 0n && this.gui) {
         this.gui.update_values();
       }
 

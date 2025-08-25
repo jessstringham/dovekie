@@ -9,9 +9,15 @@ class ConfigHistory {
       this.local_storage_name = `${this.local_storage_name}.${sketch_name}`;
     }
 
-    this.history = JSON.parse(
-      localStorage.getItem(this.local_storage_name) || "[]"
-    );
+    try {
+      this.history = JSON.parse(
+        localStorage.getItem(this.local_storage_name) || "[]"
+      );
+    } catch (e) {
+      console.error("Failed to parse config history:", e);
+      this.history = [];
+      localStorage.removeItem(this.local_storage_name);
+    }
   }
 
   clear() {
@@ -132,7 +138,7 @@ export function rehydrate(flattenedVals) {
     if (value != undefined) {
       let last_val = split_key[split_key.length - 1];
 
-      const is_list = Number.isInteger(parseInt(last_val));
+      const is_list = isInt(last_val);
       if (is_list) {
         last_val = parseInt(last_val);
       }
@@ -142,6 +148,10 @@ export function rehydrate(flattenedVals) {
   }
 
   return result;
+}
+
+function isInt(str) {
+  return typeof str === "string" && /^[0-9]+$/.test(str);
 }
 
 function make_div(parent, cls) {
@@ -280,12 +290,9 @@ function path_to_id(path) {
   return path.replace(/[{}.\[\]]/g, (match) => {
     switch (match) {
       case "{":
-        return "";
       case "}":
-        return "";
       case "[":
-        return "";
-      case "}":
+      case "]":
         return "";
       case ".":
         return "-";
@@ -671,7 +678,7 @@ function add_list(parentDiv, parentPath, parentSchema, parentInitValue, args) {
 
   const listEdit = make_div(div, "expanded");
 
-  const addButtonBeginning = make_add_button(listEdit, 0);
+  const addButtonBeginning = make_add_button(listEdit);
   addButtonBeginning.addEventListener("click", () => {
     insert_list_item_at(wrapper, path, parentSchema, 0);
   });
@@ -686,7 +693,7 @@ function add_list(parentDiv, parentPath, parentSchema, parentInitValue, args) {
       isDeletableIdx: [wrapper, path, parentSchema, i],
     };
     add_item(listEdit, path + "." + i, parentSchema, initValue[i], newArgs);
-    const addButton = make_add_button(listEdit, i + 1);
+    const addButton = make_add_button(listEdit);
     addButton.addEventListener("click", () => {
       insert_list_item_at(wrapper, path, parentSchema, i + 1);
     });
@@ -969,6 +976,7 @@ export class MurreletGUI {
   // this.model has the model
   async undo() {
     let prevConf = this.config_history.pop();
+    if (!prevConf) return;
     await this.build_edit_page_from_divs(prevConf.conf);
   }
 
