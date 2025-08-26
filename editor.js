@@ -85,6 +85,11 @@ class ConfigHistory {
     }
   }
 
+  delete_item(id) {
+    this.history = this.history.filter(item => item.id !== id);
+    this.save();
+  }
+
   view() {
     return [...this.history].sort((a, b) => b.time - a.time);
   }
@@ -219,9 +224,9 @@ function make_selection(parent, cls, rustid, values, selectedValue) {
   return div;
 }
 
-function isInt(num) {
-  return Number.isInteger(parseInt(num));
-}
+// function isInt(num) {
+//   return Number.isInteger(parseInt(num));
+// }
 
 function setViewedSelection(selection, parent) {
   const choices = parent.querySelectorAll(".enum-choice");
@@ -992,6 +997,10 @@ export class MurreletGUI {
 
   rename_history(id, new_name) {
     this.config_history.rename_item(id, new_name);
+  }
+
+  delete_item_from_history(id) {
+    this.config_history.delete_item(id);
   }
 
   clear_history() {
