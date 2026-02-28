@@ -67,7 +67,7 @@ export class ValuesHistory {
   }
 }
 
-function draw_sparkline(container, data, type) {
+function draw_number(data) {
   const span = document.createElement("span");
   span.style.color = "aquamarine";
   span.style.fontFamily = "monospace";
@@ -97,12 +97,18 @@ function draw_sparkline(container, data, type) {
   }
   span.textContent = ` ${last}`;
 
+  return span;
+}
+
+function draw_sparkline(container, data, type) {
   if (data.length > 0) {
     if (type === "num") {
       let svg = sparkline(data);
       svg.style.display = "inline-block";
       svg.style.verticalAlign = "middle";
       container.appendChild(svg);
+      container.appendChild(draw_number(data));
+    } else if (type === "color") {
     }
     // } else if (type === "v2") {
     //   const svg = d3
@@ -225,8 +231,6 @@ function draw_sparkline(container, data, type) {
     //   container.appendChild(svg.node());
     // }
   }
-
-  container.appendChild(span);
 
   return container;
 }

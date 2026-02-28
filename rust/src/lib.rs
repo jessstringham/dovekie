@@ -139,6 +139,7 @@ impl SchemaInfo {
         }
     }
 }
+
 #[wasm_bindgen]
 pub async fn new_model(conf: String) -> WasmMurreletModelResult {
     MurreletModel::new(conf).await

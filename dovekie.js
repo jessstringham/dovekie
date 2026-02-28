@@ -13,14 +13,18 @@ export async function wasmInit() {
 }
 
 export class Dovekie {
-  constructor(opts = { svg: null, url_param_key: "conf" }) {
+  constructor(
+    opts = { svg: null, default_custom_variables: {} }
+  ) {
     // if you want to use mouse events, use this to set what the mouse is relative to!
-    const { svg } = opts;
+    const { svg, default_custom_variables } = opts;
 
     this.murrelet = null;
     this.svg = svg;
 
     this.app_config = { ...defaultApp };
+
+    this.default_custom_variables = default_custom_variables;
 
     // init some things about the mouse
     this.built_in_variables = {
@@ -160,21 +164,33 @@ export class Dovekie {
 
   async set_config(drawingConf) {
     // we don't support hashmaps yet, so just convert to vec
-    function convertToVec(obj) {
-      return Object.entries(obj).map(([key, value]) => {
-        if (
-          typeof value === "object" &&
-          value !== null &&
-          !Array.isArray(value)
-        ) {
-          return { key: key, value: convertToVec(value) };
-        } else {
-          return { key: key, value: value };
-        }
-      });
+
+    function convert_item(value) {
+      if (
+        typeof value === "object" &&
+        value !== null &&
+        !Array.isArray(value)
+      ) {
+        // step one, if it's another struct
+        return Object.entries(value).map(([key, value]) => {
+          return { key: key, value: convert_item(value) };
+        });
+      } else if (Array.isArray(value)) {
+        // if it's an array
+        return value.map((element) => convert_item(element));
+      } else if (typeof value === "number") {
+        // it's a number, return as is
+        return value;
+      } else if (!isNaN(parseFloat(value))) {
+        // if it can be parsed as a float, return the float
+        return parseFloat(value);
+      } else {
+        // console.error("unexpected type", value);
+        return value; // this should be a function hopefully!
+      }
     }
 
-    const convertedConf = convertToVec(drawingConf);
+    const convertedConf = convert_item(drawingConf);
     // console.log(convertedConf);
 
     const conf = { app: defaultApp, drawing: { data: convertedConf } };
@@ -242,18 +258,6 @@ export class Dovekie {
     }
   }
 
-  async to_dist() {
-    if (this.murrelet !== null) {
-      return await this.murrelet.to_dist();
-    }
-  }
-
-  async to_dist_mask() {
-    if (this.murrelet !== null) {
-      return await this.murrelet.to_dist_mask();
-    }
-  }
-
   async reload(conf) {
     var confMsg = "";
 
@@ -309,12 +313,12 @@ export class Dovekie {
 
   update({ custom_variables = null } = {}) {
     if (this.murrelet !== null) {
-      let custom_vars;
-      if (custom_variables) {
-        custom_vars = JSON.stringify(custom_variables);
-      } else {
-        custom_vars = "{}";
-      }
+      let vars = {
+        ...this.default_custom_variables,
+        ...(custom_variables || {}),
+      };
+
+      let custom_vars = JSON.stringify(vars);
 
       this.murrelet.update_frame(
         this.built_in_variables.frame,
@@ -348,7 +352,11 @@ export class Dovekie {
           return [];
         }
         // if it's looking like a struct
-        if (typeof data[0] === "object") {
+        if (
+          typeof data[0] === "object" &&
+          "key" in data[0] && // hm this will bite us if user-defined values are key/value, maybe should use a funkier name?
+          "value" in data[0]
+        ) {
           // assert this is true?
           // data[0] !== null && "key" in data[0] && "value" in data[0]
           let r = {};

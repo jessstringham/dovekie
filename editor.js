@@ -86,7 +86,7 @@ class ConfigHistory {
   }
 
   delete_item(id) {
-    this.history = this.history.filter(item => item.id !== id);
+    this.history = this.history.filter((item) => item.id !== id);
     this.save();
   }
 
@@ -267,7 +267,7 @@ function make_add_button(div) {
 }
 
 function add_label(div, labelText) {
-  const label = document.createElement("label");
+  const label = document.createElement("span");
   label.textContent = labelText + ":";
   div.appendChild(label);
 }
@@ -752,9 +752,42 @@ function input_ref_defs(parentDiv, parentPath, parentInitValue) {
   make_input(parentDiv, "val-ref", parentPath, parentInitValue || "a");
 }
 
+function make_color_picker(parentDiv, h, s, v, a) {
+  parentDiv.innerHTML = `<svg width="26" height="18" viewBox="0 0 20 20">
+    <rect x="2" y="2" width="16" height="16" fill="#ccc" stroke="#fff" stroke-width="1"/>
+  </svg>`;
+
+  const rect = parentDiv.querySelector("rect");
+
+  function set_rect_color() {
+    // todo, this won't work for expressions!
+    let hue = parseFloat(h.value) * 360;
+    let sv = parseFloat(s.value);
+    let vv = parseFloat(v.value);
+    let alpha = parseFloat(a.value);
+
+    // some chatgpt to convert hsv to hsl
+    let L = vv * (1 - sv / 2);
+    let S_hsl = L === 0 || L === 1 ? 0 : (vv - L) / Math.min(L, 1 - L);
+
+    // to percentages for CSS
+    let satPct = (S_hsl * 100).toFixed(2);
+    let lightPct = (L * 100).toFixed(2);
+
+    rect.setAttribute(
+      "fill",
+      `hsla(${hue}, ${satPct}%, ${lightPct}%, ${alpha})`
+    );
+  }
+
+  set_rect_color();
+}
+
 function input_val_color(parentDiv, parentPath, parentInitValue) {
   // todo, have this update all of them..
   // make_dummy_input(parentDiv, "val-color", parentPath, parentInitValue);
+  let color_picker = make_span(parentDiv, "val-color-picker");
+
   make_span(parentDiv, "val-color-label", "[");
 
   let initValue = parentInitValue;
@@ -763,7 +796,7 @@ function input_val_color(parentDiv, parentPath, parentInitValue) {
   }
 
   // secretly we'll always do hsv
-  make_input(
+  let h = make_input(
     parentDiv,
     "val-color",
     parentPath + ".0",
@@ -772,7 +805,7 @@ function input_val_color(parentDiv, parentPath, parentInitValue) {
   );
   make_span(parentDiv, "val-color-label", ",");
 
-  make_input(
+  let s = make_input(
     parentDiv,
     "val-color",
     parentPath + ".1",
@@ -781,7 +814,7 @@ function input_val_color(parentDiv, parentPath, parentInitValue) {
   );
   make_span(parentDiv, "val-color-label", ",");
 
-  make_input(
+  let v = make_input(
     parentDiv,
     "val-color",
     parentPath + ".2",
@@ -790,7 +823,7 @@ function input_val_color(parentDiv, parentPath, parentInitValue) {
   );
   make_span(parentDiv, "val-color-label", ",");
 
-  make_input(
+  let a = make_input(
     parentDiv,
     "val-color",
     parentPath + ".3",
@@ -798,6 +831,8 @@ function input_val_color(parentDiv, parentPath, parentInitValue) {
     path_to_id(parentPath) + "a"
   );
   make_span(parentDiv, "val-color-label", ")");
+
+  make_color_picker(color_picker, h, s, v, a);
 }
 
 function add_val(parentDiv, parentPath, parentSchema, parentInitValue, args) {
@@ -941,7 +976,12 @@ export class MurreletGUI {
     let raw_gui_schema = await this.model.murrelet.gui_schema(
       JSON.stringify(schema_hints)
     );
-    this.gui_schema = JSON.parse(raw_gui_schema);
+
+    try {
+      this.gui_schema = JSON.parse(raw_gui_schema);
+    } catch (err) {
+      console.error("error setting schema", raw_gui_schema);
+    }
   }
 
   conf_update(isSuccess) {
@@ -968,9 +1008,9 @@ export class MurreletGUI {
 
   async build_html(drawingConf) {
     if (!this.gui_schema) {
-      // only need to call this once
-      //   await this.init();
-      console.error("need to call init first!");
+      console.error(
+        "need to successfully initialize the gui first, check for previous failures."
+      );
     }
 
     build_html(this.div, this.gui_schema, drawingConf);
