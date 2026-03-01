@@ -2,12 +2,16 @@ use std::collections::{BTreeMap, HashMap};
 
 use murrelet_gui::{CanChangeToGUI, MurreletGUISchema};
 use murrelet_schema::MurreletSchema;
+use murrelet_wasm::{JsResult, ToJsResult};
 use serde::Serialize;
 
 use anyhow::Result;
 use lerpable::Lerpable;
 use murrelet::prelude::*;
-use murrelet_livecode::{livecode::LivecodeFromWorld, types::LivecodeError};
+use murrelet_livecode::{
+    livecode::LivecodeFromWorld,
+    types::{LivecodeError, LivecodeResult, ToLivecodeResult},
+};
 use murrelet_perform::asset_loader::AssetLoaders;
 use serde_json;
 use wasm_bindgen::prelude::*;
@@ -127,13 +131,11 @@ pub struct SchemaInfo {
 }
 
 impl SchemaInfo {
-    fn check_conf(&self, c: &DrawingConf) -> Result<(), String> {
-        let new_schema = c
-            .to_schema_with_hints(&self.gui_hints)
-            .map_err(|err| err.to_string())?;
+    fn check_conf(&self, c: &DrawingConf) -> LivecodeResult<()> {
+        let new_schema = c.to_schema_with_hints(&self.gui_hints).to_lc_err()?;
 
         if self.schema != new_schema {
-            Err("schemas don't match!".to_string())
+            Err(LivecodeError::Raw("schemas don't match!".to_string()))
         } else {
             Ok(())
         }
@@ -141,7 +143,7 @@ impl SchemaInfo {
 }
 
 #[wasm_bindgen]
-pub async fn new_model(conf: String) -> WasmMurreletModelResult {
+pub async fn new_model(conf: String) -> JsResult<MurreletModel> {
     MurreletModel::new(conf).await
 }
 
@@ -150,20 +152,8 @@ pub struct MurreletModel {
     livecode: LiveCode,
     schema: Option<SchemaInfo>,
 }
-#[wasm_bindgen]
 impl MurreletModel {
-    #[wasm_bindgen(constructor)]
-    pub async fn new(conf: String) -> WasmMurreletModelResult {
-        // turn this on if you need to debug
-        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-
-        match Self::new_internal(conf) {
-            Ok(m) => WasmMurreletModelResult::ok(m),
-            Err(err) => WasmMurreletModelResult::err(err),
-        }
-    }
-
-    fn new_internal(conf: String) -> Result<MurreletModel, LivecodeError> {
+    fn new_internal(conf: String) -> LivecodeResult<MurreletModel> {
         let livecode_src = LivecodeSrc::new(vec![Box::new(AppInputValues::new(false))]);
 
         match LiveCode::new_web(conf, livecode_src, &AssetLoaders::empty()) {
@@ -181,7 +171,7 @@ impl MurreletModel {
     fn update_schema(
         &mut self,
         hints: &HashMap<String, String>,
-    ) -> Result<MurreletGUISchema, String> {
+    ) -> LivecodeResult<MurreletGUISchema> {
         match self.livecode.config().drawing.to_schema_with_hints(hints) {
             Ok(schema) => {
                 let gui = schema.change_to_gui();
@@ -191,77 +181,68 @@ impl MurreletModel {
                 });
                 Ok(gui)
             }
-            Err(err) => Err(err.to_string()),
+            Err(err) => Err(LivecodeError::Raw(err.to_string())),
         }
     }
 
-    fn gui_schema_internal(&mut self, hints: &String) -> Result<MurreletGUISchema, String> {
+    fn gui_schema_internal(&mut self, hints: &String) -> LivecodeResult<MurreletGUISchema> {
         let hints_map: std::collections::HashMap<String, String> = serde_json::from_str(&hints)
             .map_err(|x| {
-                format!(
+                LivecodeError::Raw(format!(
                     "Error parsing hints as map from string to string {}, {}",
                     hints,
                     x.to_string()
-                )
+                ))
             })?;
 
         self.update_schema(&hints_map)
-
-        // match self
-        //     .livecode
-        //     .config()
-        //     .drawing
-        //     .to_schema_with_hints(&hints_map)
-        // {
-        //     Ok(data) => {
-        //         let gui = data.change_to_gui();
-        //         self.schema = Some(data);
-        //         Ok(gui)
-        //     }
-        //     Err(err) => Err(err.to_string()),
-        // }
     }
 
-    #[wasm_bindgen]
-    pub async fn gui_schema(&mut self, hints: String) -> String {
-        match self.gui_schema_internal(&hints) {
-            Ok(schema) => serde_json::to_string(&schema)
-                .unwrap_or_else(|_| "Error serialization failed".to_string()),
-            Err(err) => err,
-        }
-    }
-
-    pub fn check_schema(&self, conf: &str) -> Result<(), String> {
+    fn check_schema_internal(&self, conf: &str) -> LivecodeResult<()> {
         if let Some(schema) = &self.schema {
-            match ControlLiveCodeConf::parse(&conf) {
-                Ok(s) => match s.o(self.livecode.world()) {
-                    Ok(parsed) => {
-                        match schema.check_conf(&parsed.drawing) {
-                            Ok(()) => Ok(()), // we're good,
-                            Err(err) => return Err(err.to_string()),
-                        }
-                    }
-                    Err(err) => return Err(err.to_string()),
-                },
-                Err(err) => return Err(err.to_string()),
-            }
+            let ctrl = ControlLiveCodeConf::parse(&conf)?;
+
+            let parsed = ctrl.o(self.livecode.world())?;
+
+            schema.check_conf(&parsed.drawing)
         } else {
-            // Err("schema not set".to_string())
             Ok(())
         }
     }
+}
+
+#[wasm_bindgen]
+impl MurreletModel {
+    #[wasm_bindgen(constructor)]
+    pub async fn new(conf: String) -> JsResult<MurreletModel> {
+        // turn this on if you need to debug
+        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+
+        Self::new_internal(conf).to_js()
+    }
 
     #[wasm_bindgen]
-    pub fn update_config(&mut self, conf: String) -> String {
+    pub async fn gui_schema(&mut self, hints: String) -> JsResult<String> {
+        match self.gui_schema_internal(&hints) {
+            Ok(schema) => serde_json::to_string(&schema)
+                .map_err(|s| format!("Error serialization failed {s}")),
+            Err(err) => Err(err.to_string()),
+        }
+        .to_js()
+    }
+
+    pub fn check_schema(&self, conf: &str) -> JsResult<()> {
+        self.check_schema_internal(conf).to_js()
+    }
+
+    #[wasm_bindgen]
+    pub fn update_config(&mut self, conf: String) -> JsResult<()> {
         // test, adding the schema check here! maybe we add it deeper...
         // before actually updating it, run some checks that it evaluates to the right schema
-        match self.check_schema(&conf) {
-            Ok(()) => match self.livecode.update_config_to(&conf) {
-                Ok(_) => "Success!".to_owned(),
-                Err(e) => e,
-            },
-            Err(e) => e.to_string(),
-        }
+
+        self.check_schema(&conf)?;
+
+        self.livecode.update_config_to(&conf).to_js()
     }
 
     #[wasm_bindgen]
@@ -313,45 +294,5 @@ impl MurreletModel {
                 "Serialization failed".to_string()
             }
         }
-    }
-}
-
-// just creating a Result<Model, String> that we can send to javascript
-#[wasm_bindgen]
-pub struct WasmMurreletModelResult {
-    m: Option<MurreletModel>,
-    err: String,
-}
-
-#[wasm_bindgen]
-impl WasmMurreletModelResult {
-    fn ok(m: MurreletModel) -> WasmMurreletModelResult {
-        WasmMurreletModelResult {
-            m: Some(m),
-            err: String::new(),
-        }
-    }
-
-    fn err(err: LivecodeError) -> WasmMurreletModelResult {
-        WasmMurreletModelResult {
-            m: None,
-            err: err.to_string(),
-        }
-    }
-
-    #[wasm_bindgen]
-    pub fn is_err(&self) -> bool {
-        self.m.is_none()
-    }
-
-    #[wasm_bindgen]
-    pub fn err_msg(self) -> String {
-        self.err
-    }
-
-    #[wasm_bindgen]
-    pub fn to_model(self) -> MurreletModel {
-        // panics if you don't check is error first
-        self.m.unwrap()
     }
 }

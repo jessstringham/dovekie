@@ -2,3 +2,19 @@
 members = ["rust"]
 
 resolver = "2"
+
+[workspace.dependencies]
+murrelet = { path = "../murrelet/murrelet", version = "0.1.3" }
+murrelet_common = { path = "../murrelet/murrelet_common", version = "0.1.3" }
+murrelet_livecode = { path = "../murrelet/murrelet_livecode", version = "0.1.3", default-features = false }
+murrelet_perform = { path = "../murrelet/murrelet_perform", version = "0.1.3", default-features = false }
+murrelet_gui = { path = "../murrelet/murrelet_gui", version = "0.1.3" }
+murrelet_schema = { path = "../murrelet/murrelet_schema", version = "0.1.3" }
+murrelet_gen = { path = "../murrelet/murrelet_gen", version = "0.1.3" }
+murrelet_draw = { path = "../murrelet/murrelet_draw", version = "0.1.3", default-features = false }
+murrelet_wasm = { path = "../murrelet/murrelet_wasm", version = "0.1.3", default-features = false }
+lerpable = { path = "../lerpable/lerpable", version = "0.0.3" }
+
+[profile.release]
+lto = true
+opt-level = "z"

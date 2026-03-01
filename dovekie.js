@@ -231,18 +231,17 @@ export class Dovekie {
       if (typeof conf !== "string") {
         conf = JSON.stringify(conf);
       }
-      let model_or_err = await model_func(conf);
-      if (model_or_err.is_err()) {
-        console.error(
-          "error initializing with configuration",
-          conf,
-          model_or_err.err_msg()
-        );
-        document.getElementById("err_msg").innerHTML = model_or_err.err_msg();
-      } else {
-        this.murrelet = model_or_err.to_model();
+
+      try {
+        const model = await model_func(conf);
+        this.murrelet = model;
         console.log("model successfully initialized!");
+      } catch (e) {
+        console.error("error initializing with configuration", conf, e);
+        const msg = (e && e.message) ? e.message : String(e);
+        document.getElementById("err_msg").innerHTML = msg;
       }
+
     } catch (err) {
       console.error("init failed", err);
     }
