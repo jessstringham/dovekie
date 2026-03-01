@@ -194,25 +194,27 @@ export class Dovekie {
     // console.log(convertedConf);
 
     const conf = { app: defaultApp, drawing: { data: convertedConf } };
-    let err_msg = await this.reload(conf);
 
-    if (err_msg != "" && err_msg != "Success!") {
+
+    try {
+      await this.reload(conf);
+    } catch (e) {
       console.log(JSON.stringify(drawingConf));
       console.log("error from drawing conf:", err_msg);
 
       return { is_success: false, err_msg };
-    } else {
-      console.log("success!");
-      this.update({}); // we leave custom variables alone
-      this.init_conf = drawingConf;
-
-      if (this.set_config_callback) {
-        // doing extra work here but maybe that'll make sure it's consistent!
-        this.set_config_callback(this.params());
-      }
-
-      return { is_success: true };
     }
+
+    console.log("success!");
+    this.update({}); // we leave custom variables alone
+    this.init_conf = drawingConf;
+
+    if (this.set_config_callback) {
+      // doing extra work here but maybe that'll make sure it's consistent!
+      this.set_config_callback(this.params());
+    }
+
+    return { is_success: true };
   }
 
   async initModel(conf, opts = {}) {
@@ -269,7 +271,8 @@ export class Dovekie {
     }
 
     if (this.murrelet !== null) {
-      confMsg = this.murrelet.update_config(confstr);
+      // will error if this is invalid, so be sure to catch it
+      this.murrelet.update_config(confstr);
 
       // this.fps = this.murrelet.fps();
       this.updateWindowSize();
