@@ -259,9 +259,8 @@ export class Dovekie {
     }
   }
 
+  // can throw exception
   async reload(conf) {
-    var confMsg = "";
-
     const confstr = JSON.stringify(conf);
 
     var isInitial = false;
@@ -277,8 +276,6 @@ export class Dovekie {
       // this.fps = this.murrelet.fps();
       this.updateWindowSize();
     }
-
-    return confMsg;
   }
 
   // get world state
