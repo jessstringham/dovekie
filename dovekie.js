@@ -3,14 +3,53 @@ import wasmUrl from "./rust/pkg/dovekie_bg.wasm?url";
 import "./style.css";
 import { MurreletGUI, try_to_get_conf_from_url } from "./editor.js";
 
-const defaultApp = {
-  time: {},
-  ctx: "",
-};
 
-export async function wasmInit() {
-  await init(wasmUrl);
+
+let wasm = null;
+
+export async function initWasm() {
+  if (!wasm) {
+    wasm = await init(wasmUrl);
+    if (typeof window !== "undefined") window.dovekie_wasm = wasm;
+  }
+  return wasm;
 }
+
+export function getWasm() {
+  if (!wasm) throw new Error("Call initWasm() first");
+  return wasm;
+}
+
+
+// chatgpt to test this out...
+class RaftResult {
+  constructor(flat, stride, paths) {
+    this.flat = flat;                // copied Float32Array
+    this.stride = stride;            // columns per row
+    this.paths = paths;              // e.g. ["zoom.x", "zoom.y", ...]
+    this.rowCount = stride === 0 ? 0 : (flat.length / stride) | 0;
+
+    this.pathToCol = new Map();
+    for (let i = 0; i < paths.length; i++) this.pathToCol.set(paths[i], i);
+  }
+
+  get(row, path) {
+    if (row < 0 || row >= this.rowCount) throw new RangeError(`row ${row} out of range`);
+    const col = this.pathToCol.get(path);
+    if (col == null) throw new Error(`Unknown path: ${path}`);
+    return this.flat[row * this.stride + col];
+  }
+
+  // Optional: materialize one row only when needed
+  rowObject(row) {
+    if (row < 0 || row >= this.rowCount) throw new RangeError(`row ${row} out of range`);
+    const base = row * this.stride;
+    const out = {};
+    for (let i = 0; i < this.paths.length; i++) out[this.paths[i]] = this.flat[base + i];
+    return out;
+  }
+}
+
 
 export class Dovekie {
   constructor(
@@ -22,23 +61,7 @@ export class Dovekie {
     this.murrelet = null;
     this.svg = svg;
 
-    this.app_config = { ...defaultApp };
-
     this.default_custom_variables = default_custom_variables;
-
-    // init some things about the mouse
-    this.built_in_variables = {
-      mouse_x: 0.0, // mouse x
-      mouse_y: 0.0, // mouse y
-      mouse_down: false,
-
-      // init some things about the window (will update soon)
-      dim_x: 600.0, // will be w
-      dim_y: 600.0, // will be h
-
-      // init frame count
-      frame: 1n,
-    };
 
     this.fps = 30; // initial, but we'll load this from the config
     this.lastUpdate = performance.now();
@@ -67,14 +90,22 @@ export class Dovekie {
   }
 
   set_bpm(bpm) {
+    if (this.murrelet == null) {
+      return
+    }
+
     if (!isNaN(Number(bpm))) {
-      this.app_config.time.bpm = Number(bpm);
+      this.murrelet.set_bpm(bpm);
     }
   }
 
   set_beats_per_bar(beats_per_bar) {
+    if (this.murrelet == null) {
+      return
+    }
+
     if (!isNaN(Number(beats_per_bar))) {
-      this.app_config.time.beats_per_bar = Number(beats_per_bar);
+      this.murrelet.set_beats_per_bar(bpm);
     }
   }
 
@@ -91,7 +122,7 @@ export class Dovekie {
     let drawingConf = try_to_get_conf_from_url(url_param_key);
 
     const uninitialized_error_msg =
-      "Can't set up the GUI without an example of the drawing config! Call `this.set_config(conf)` before calling this!";
+      "Can't set up the GUI without an example of the drawing config! Call `this.set_config_json(conf)` before calling this!";
 
     if (!drawingConf) {
       if (this.init_conf) {
@@ -193,12 +224,11 @@ export class Dovekie {
     const convertedConf = convert_item(drawingConf);
     // console.log(convertedConf);
 
-    const conf = { app: defaultApp, drawing: { data: convertedConf } };
-
+    const conf = { data: convertedConf };
 
     try {
       await this.reload(conf);
-    } catch (e) {
+    } catch (err_msg) {
       console.log(JSON.stringify(drawingConf));
       console.log("error from drawing conf:", err_msg);
 
@@ -263,46 +293,56 @@ export class Dovekie {
   async reload(conf) {
     const confstr = JSON.stringify(conf);
 
-    var isInitial = false;
     if (this.murrelet === null) {
       await this.initModel(confstr);
-      isInitial = true;
     }
 
     if (this.murrelet !== null) {
       // will error if this is invalid, so be sure to catch it
-      this.murrelet.update_config(confstr);
+      this.murrelet.set_config_json(confstr);
 
       // this.fps = this.murrelet.fps();
       this.updateWindowSize();
     }
   }
 
-  // get world state
+  ////////
+  // update the app configs
   updateWindowSize() {
     if (this.svg) {
       const rect = this.svg.getBoundingClientRect();
-      this.built_in_variables.dim_x = rect.width;
-      this.built_in_variables.dim_y = rect.height;
+      let win_x = rect.width;
+      let win_y = rect.height;
+
+      this.murrelet.set_window_dims(win_x, win_y);
     }
   }
 
   mouseMove(event) {
-    if (this.svg) {
+    if (this.svg && this.murrelet) {
       const rect = this.svg.getBoundingClientRect();
       // Calculate the x and y coordinates relative to the container
-      this.built_in_variables.mouse_x = event.clientX - rect.left;
-      this.built_in_variables.mouse_y = event.clientY - rect.top;
+      let mouse_x = event.clientX - rect.left;
+      let mouse_y = event.clientY - rect.top;
+
+      this.murrelet.set_mouse_position(mouse_x, mouse_y);
     }
   }
 
   mouseDown() {
-    this.built_in_variables.mouse_down = true;
+    if (this.murrelet !== null) {
+      this.murrelet.set_mouse_left_is_down();
+    }
   }
 
   mouseUp() {
-    this.built_in_variables.mouse_down = false;
+    if (this.murrelet !== null) {
+      this.murrelet.set_mouse_left_is_up();
+    }
   }
+
+  ////////
+
 
   state() {
     if (this.murrelet !== null) {
@@ -310,38 +350,60 @@ export class Dovekie {
     }
   }
 
-  update({ custom_variables = null } = {}) {
+  set_custom_variables(vs) {
+    if (this.murrelet == null) {
+      return
+    }
+
+    for (const [k, v] of Object.entries(vs)) {
+      this.murrelet.set_custom_var(k, v);
+    }
+
+
+  }
+
+  // todo, make sure that callers call set_custom_vars ahead of time.
+  // update({ custom_variables = null } = {}) {
+
+  update() {
     if (this.murrelet !== null) {
-      let vars = {
-        ...this.default_custom_variables,
-        ...(custom_variables || {}),
-      };
-
-      let custom_vars = JSON.stringify(vars);
-
-      this.murrelet.update_frame(
-        this.built_in_variables.frame,
-        this.built_in_variables.dim_x,
-        this.built_in_variables.dim_y,
-        this.built_in_variables.mouse_x,
-        this.built_in_variables.mouse_y,
-        this.built_in_variables.mouse_down,
-        custom_vars
-      );
+      this.murrelet.tick();
 
       // if we have a gui, update the values every few frames
-      if (this.built_in_variables.frame % 5n == 0n && this.gui) {
+      if (this.murrelet.frame() % 5n == 0n && this.gui) {
         this.gui.update_values();
       }
 
       // update the variables that depend on when updates happen!
       this.lastUpdate = performance.now();
-      this.built_in_variables.frame += 1n;
     }
   }
 
+  // make sure data is in row-major order! it should always have the same length
+  set_raft(fields, data) {
+    if (this.murrelet == null) {
+      return
+    }
+
+    let f32 = new Float32Array(data.flat());
+    this.murrelet.set_data(fields, f32);
+  }
+
+  compute_raft() {
+    const len = this.murrelet.o_many();          // f32 count (row_count * stride)
+    const ptr = this.murrelet.raft_out_ptr();    // byte offset
+    const stride = this.murrelet.raft_stride();
+    const paths = JSON.parse(this.murrelet.raft_leaf_paths_json());
+
+    const flatView = new Float32Array(getWasm().memory.buffer, ptr, len);
+
+    const flat = flatView.slice();
+
+    return new RaftResult(flat, stride, paths);
+  }
+
   params() {
-    const raw = JSON.parse(this.murrelet.conf()).data;
+    const raw = JSON.parse(this.murrelet.get_config_json()).data;
 
     // recursively go through and parse back into the structure
     // it'll either be a struct (list with {key, value}), a vec (a list), or a float.
@@ -375,4 +437,7 @@ export class Dovekie {
 
     return parseParams(raw);
   }
+
+
+
 }

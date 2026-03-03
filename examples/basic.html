@@ -129,8 +129,8 @@
         function animate() {
           // if you need to ping for variables, do it here!
           // in this case, we're using an event, so it should be up-to-date
-          // update_custom_variables();
-          model.update({ custom_variables: CUSTOM_VARIABLES }); // call once per frame!
+          model.set_custom_variables(CUSTOM_VARIABLES);
+          model.update(); // call once per frame!
 
           const params = model.params();
           // example format of params
